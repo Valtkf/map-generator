@@ -20,6 +20,7 @@ interface PreviewMapProps {
   gpxGeoJson: GeoJSON;
   center: [number, number];
   zoom: number;
+  showGrid?: boolean;
 }
 
 const PreviewMap = ({
@@ -27,6 +28,7 @@ const PreviewMap = ({
   gpxGeoJson,
   center,
   zoom,
+  showGrid = false,
 }: PreviewMapProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -94,6 +96,36 @@ const PreviewMap = ({
       className="relative w-full max-w-2xl h-96 border border-gray-300"
     >
       <div ref={mapContainer} className="w-full h-full" />
+
+      {/* Grille de repérage */}
+      {showGrid && (
+        <div className="absolute inset-0 pointer-events-none">
+          {/* Lignes horizontales */}
+          <div className="grid-lines-horizontal">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={`h-${i}`}
+                className="absolute w-full border-t border-white border-opacity-30"
+                style={{ top: `${(i + 1) * 20}%` }}
+              />
+            ))}
+          </div>
+
+          {/* Lignes verticales */}
+          <div className="grid-lines-vertical">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={`v-${i}`}
+                className="absolute h-full border-l border-white border-opacity-30"
+                style={{ left: `${(i + 1) * 20}%` }}
+              />
+            ))}
+          </div>
+
+          {/* Point central */}
+          <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-red-500 rounded-full transform -translate-x-1/2 -translate-y-1/2" />
+        </div>
+      )}
     </div>
   );
 };

@@ -1,0 +1,10 @@
+/components
+  /map
+    MapControls.tsx
+    PreviewMap.tsx
+  /inputs
+    FileUpload.tsx
+    ColorSelector.tsx
+  /buttons
+    GenerateMapButton.tsx
+  CardMapGenerator.tsx  // Composant principal 
