@@ -12,44 +12,72 @@ export type GeoJson = {
 };
 
 export const parseGpxFile = async (file: File): Promise<GeoJson> => {
-  const text = await file.text();
-  const parser = new DOMParser();
-  const xmlDoc = parser.parseFromString(text, "text/xml");
+  try {
+    const text = await file.text();
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(text, "text/xml");
 
-  // Extraire uniquement les points de trace (trkpt)
-  const trackSegments = xmlDoc.getElementsByTagName("trkseg");
-  const routePoints: [number, number][] = [];
+    // Vérifier si le parsing a échoué
+    const parseError = xmlDoc.getElementsByTagName("parsererror");
+    if (parseError.length > 0) {
+      throw new Error("Format XML invalide");
+    }
 
-  for (let i = 0; i < trackSegments.length; i++) {
-    const trackPoints = trackSegments[i].getElementsByTagName("trkpt");
+    // Extraire uniquement les points de trace (trkpt)
+    const trackSegments = xmlDoc.getElementsByTagName("trkseg");
+    if (trackSegments.length === 0) {
+      throw new Error("Aucun segment de trace trouvé dans le fichier GPX");
+    }
 
-    for (let j = 0; j < trackPoints.length; j++) {
-      const point = trackPoints[j];
-      const lon = parseFloat(point.getAttribute("lon") || "0");
-      const lat = parseFloat(point.getAttribute("lat") || "0");
+    const routePoints: [number, number][] = [];
 
-      // Vérifier que les coordonnées sont valides
-      if (!isNaN(lon) && !isNaN(lat)) {
-        routePoints.push([lon, lat]);
+    for (let i = 0; i < trackSegments.length; i++) {
+      const trackPoints = trackSegments[i].getElementsByTagName("trkpt");
+
+      if (trackPoints.length === 0) {
+        console.warn(`Segment ${i + 1} ne contient aucun point`);
+        continue;
+      }
+
+      for (let j = 0; j < trackPoints.length; j++) {
+        const point = trackPoints[j];
+        const lon = parseFloat(point.getAttribute("lon") || "0");
+        const lat = parseFloat(point.getAttribute("lat") || "0");
+
+        // Vérifier que les coordonnées sont valides
+        if (!isNaN(lon) && !isNaN(lat)) {
+          routePoints.push([lon, lat]);
+        }
       }
     }
-  }
 
-  console.log(`Points de trace extraits: ${routePoints.length}`);
+    if (routePoints.length === 0) {
+      throw new Error("Aucun point de trace valide trouvé");
+    }
 
-  return {
-    type: "FeatureCollection",
-    features: [
-      {
-        type: "Feature",
-        geometry: {
-          type: "LineString",
-          coordinates: routePoints,
+    console.log(`Points de trace extraits: ${routePoints.length}`);
+
+    return {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: routePoints,
+          },
+          properties: {},
         },
-        properties: {},
-      },
-    ],
-  };
+      ],
+    };
+  } catch (error) {
+    console.error("Erreur lors du parsing du fichier GPX:", error);
+    throw new Error(
+      `Impossible de parser le fichier GPX: ${
+        error instanceof Error ? error.message : "Erreur inconnue"
+      }`
+    );
+  }
 };
 
 export const calculateBounds = (geoJson: GeoJson) => {

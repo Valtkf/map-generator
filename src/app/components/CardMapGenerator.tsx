@@ -1,52 +1,90 @@
 "use client";
 
-import React, { useState } from "react";
-
-import FileUpload from "./FileUpload";
-import ColorSelector from "./ColorSelector";
-
-import GenerateMapButton from "./GenerateMapButton";
-import PreviewMap from "./PreviewMap";
+import React, { useState, useCallback } from "react";
+import FileUpload from "./inputs/FileUpload";
+import ColorSelector from "./inputs/ColorSelector";
+import GenerateMapButton from "./buttons/GenerateMapButton";
+import PreviewMap from "./map/PreviewMap";
+import { MapControls } from "./map/MapControls";
 import { GeoJson, calculateBounds } from "../utils/gpx";
-import { MapControls } from "./MapControls";
+
+// Types
+interface MapState {
+  center: [number, number];
+  zoom: number;
+  backgroundColor: string;
+  geoJson: GeoJson | null;
+}
+
+// Définir l'interface pour les props de CoordinateInputs
+interface CoordinateInputsProps {
+  center: [number, number];
+  zoom: number;
+  onCenterChange: (center: [number, number]) => void;
+  onZoomChange: (zoom: number) => void;
+}
 
 const CardMap = () => {
-  const [backgroundColor, setBackgroundColor] = useState("#FFFFFF");
-  const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]);
-  const [mapZoom, setMapZoom] = useState(1);
-  const [geoJson, setGeoJson] = useState<GeoJson | null>(null);
+  // État regroupé
+  const [mapState, setMapState] = useState<MapState>({
+    center: [0, 0],
+    zoom: 1,
+    backgroundColor: "#FFFFFF",
+    geoJson: null,
+  });
 
-  const handleGpxFile = (parsedGeoJson: GeoJson) => {
-    console.log("GeoJSON parsé:", parsedGeoJson);
-    setGeoJson(parsedGeoJson);
+  // Gestionnaires d'événements avec useCallback
+  const handleGpxFile = useCallback((parsedGeoJson: GeoJson) => {
     const { center, zoom } = calculateBounds(parsedGeoJson);
-    console.log("Centre calculé:", center, "Zoom calculé:", zoom);
-    setMapCenter(center);
-    setMapZoom(zoom);
-  };
+    setMapState((prev) => ({
+      ...prev,
+      geoJson: parsedGeoJson,
+      center,
+      zoom,
+    }));
+  }, []);
 
-  const handleMove = (direction: "up" | "down" | "left" | "right") => {
-    const step = 0.01;
-    switch (direction) {
-      case "up":
-        setMapCenter([mapCenter[0], mapCenter[1] + step]);
-        break;
-      case "down":
-        setMapCenter([mapCenter[0], mapCenter[1] - step]);
-        break;
-      case "left":
-        setMapCenter([mapCenter[0] - step, mapCenter[1]]);
-        break;
-      case "right":
-        setMapCenter([mapCenter[0] + step, mapCenter[1]]);
-        break;
-    }
-  };
+  const handleMove = useCallback(
+    (direction: "up" | "down" | "left" | "right") => {
+      const step = 0.01;
+      setMapState((prev) => {
+        const [lng, lat] = prev.center;
+        let newCenter: [number, number] = [lng, lat];
 
-  const handleZoom = (type: "in" | "out") => {
-    const newZoom = type === "in" ? mapZoom + 0.5 : mapZoom - 0.5;
-    setMapZoom(Math.max(1, Math.min(20, newZoom)));
-  };
+        switch (direction) {
+          case "up":
+            newCenter = [lng, lat + step];
+            break;
+          case "down":
+            newCenter = [lng, lat - step];
+            break;
+          case "left":
+            newCenter = [lng - step, lat];
+            break;
+          case "right":
+            newCenter = [lng + step, lat];
+            break;
+        }
+
+        return { ...prev, center: newCenter };
+      });
+    },
+    []
+  );
+
+  const handleZoom = useCallback((type: "in" | "out") => {
+    setMapState((prev) => {
+      const newZoom = type === "in" ? prev.zoom + 0.5 : prev.zoom - 0.5;
+      return { ...prev, zoom: Math.max(1, Math.min(20, newZoom)) };
+    });
+  }, []);
+
+  const handleBackgroundChange = useCallback((color: string) => {
+    setMapState((prev) => ({ ...prev, backgroundColor: color }));
+  }, []);
+
+  // Extraction des valeurs pour plus de lisibilité
+  const { center, zoom, backgroundColor, geoJson } = mapState;
 
   return (
     <div className="flex flex-col items-center p-4">
@@ -55,7 +93,7 @@ const CardMap = () => {
       <FileUpload onChange={handleGpxFile} />
       <ColorSelector
         backgroundColor={backgroundColor}
-        setBackgroundColor={setBackgroundColor}
+        setBackgroundColor={handleBackgroundChange}
       />
 
       <GenerateMapButton
@@ -63,47 +101,70 @@ const CardMap = () => {
           /* Logique pour générer la carte à implémenter plus tard */
         }}
       />
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700">
-          Position de la carte
-        </label>
-        <div className="flex gap-4 mt-2">
-          <input
-            type="number"
-            value={mapCenter[0]}
-            onChange={(e) =>
-              setMapCenter([parseFloat(e.target.value), mapCenter[1]])
-            }
-            placeholder="Longitude"
-            className="border p-2"
-          />
-          <input
-            type="number"
-            value={mapCenter[1]}
-            onChange={(e) =>
-              setMapCenter([mapCenter[0], parseFloat(e.target.value)])
-            }
-            placeholder="Latitude"
-            className="border p-2"
-          />
-          <input
-            type="number"
-            value={mapZoom}
-            onChange={(e) =>
-              setMapZoom(Math.max(0, Math.min(22, parseFloat(e.target.value))))
-            }
-            placeholder="Zoom"
-            className="border p-2"
-          />
-        </div>
-      </div>
+
+      <CoordinateInputs
+        center={center}
+        zoom={zoom}
+        onCenterChange={(newCenter) =>
+          setMapState((prev) => ({ ...prev, center: newCenter }))
+        }
+        onZoomChange={(newZoom) =>
+          setMapState((prev) => ({ ...prev, zoom: newZoom }))
+        }
+      />
+
       <MapControls onMove={handleMove} onZoom={handleZoom} />
       <PreviewMap
         backgroundColor={backgroundColor}
         gpxGeoJson={geoJson || { type: "FeatureCollection", features: [] }}
-        center={mapCenter}
-        zoom={mapZoom}
+        center={center}
+        zoom={zoom}
       />
+    </div>
+  );
+};
+
+// Composant pour les entrées de coordonnées
+const CoordinateInputs = ({
+  center,
+  zoom,
+  onCenterChange,
+  onZoomChange,
+}: CoordinateInputsProps) => {
+  return (
+    <div className="mb-4">
+      <label className="block text-sm font-medium text-gray-700">
+        Position de la carte
+      </label>
+      <div className="flex gap-4 mt-2">
+        <input
+          type="number"
+          value={center[0]}
+          onChange={(e) =>
+            onCenterChange([parseFloat(e.target.value), center[1]])
+          }
+          placeholder="Longitude"
+          className="border p-2"
+        />
+        <input
+          type="number"
+          value={center[1]}
+          onChange={(e) =>
+            onCenterChange([center[0], parseFloat(e.target.value)])
+          }
+          placeholder="Latitude"
+          className="border p-2"
+        />
+        <input
+          type="number"
+          value={zoom}
+          onChange={(e) =>
+            onZoomChange(Math.max(0, Math.min(22, parseFloat(e.target.value))))
+          }
+          placeholder="Zoom"
+          className="border p-2"
+        />
+      </div>
     </div>
   );
 };
