@@ -1,6 +1,14 @@
 import React from "react";
 
-const ColorSelector = ({ backgroundColor, setBackgroundColor }) => {
+interface ColorSelectorProps {
+  backgroundColor: string;
+  setBackgroundColor: (color: string) => void;
+}
+
+const ColorSelector = ({
+  backgroundColor,
+  setBackgroundColor,
+}: ColorSelectorProps) => {
   const colors = ["bg-white", "bg-slate-900", "#A3C2D1", "#E8D3C7"];
 
   return (
@@ -9,7 +17,9 @@ const ColorSelector = ({ backgroundColor, setBackgroundColor }) => {
         <button
           key={color}
           style={{ backgroundColor: color }}
-          className="w-10 h-10 rounded-full border-2 border-gray-300"
+          className={`w-10 h-10 rounded-full border-2 ${
+            color === backgroundColor ? "border-blue-500" : "border-gray-300"
+          }`}
           onClick={() => setBackgroundColor(color)}
         />
       ))}
