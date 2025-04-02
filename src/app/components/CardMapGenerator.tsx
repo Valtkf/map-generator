@@ -33,6 +33,9 @@ const CardMap = () => {
     geoJson: null,
   });
 
+  // Nouvel état pour la grille
+  const [showGrid, setShowGrid] = useState(false);
+
   // Gestionnaires d'événements avec useCallback
   const handleGpxFile = useCallback((parsedGeoJson: GeoJson) => {
     const { center, zoom } = calculateBounds(parsedGeoJson);
@@ -114,11 +117,28 @@ const CardMap = () => {
       />
 
       <MapControls onMove={handleMove} onZoom={handleZoom} />
+
+      {/* Bouton de grille au-dessus de la carte, aligné à droite */}
+      <div className="w-full max-w-2xl flex justify-end mb-2">
+        <button
+          onClick={() => setShowGrid(!showGrid)}
+          className={`px-3 py-1 text-sm rounded ${
+            showGrid
+              ? "bg-blue-500 text-white"
+              : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100"
+          }`}
+        >
+          {showGrid ? "Masquer grille" : "Afficher grille"}
+        </button>
+      </div>
+
+      {/* Carte */}
       <PreviewMap
         backgroundColor={backgroundColor}
         gpxGeoJson={geoJson || { type: "FeatureCollection", features: [] }}
         center={center}
         zoom={zoom}
+        showGrid={showGrid}
       />
     </div>
   );

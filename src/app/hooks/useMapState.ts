@@ -6,6 +6,7 @@ interface MapState {
   zoom: number;
   backgroundColor: string;
   geoJson: GeoJson | null;
+  showGrid: boolean;
 }
 
 export function useMapState() {
@@ -14,6 +15,7 @@ export function useMapState() {
     zoom: 1,
     backgroundColor: "#FFFFFF",
     geoJson: null,
+    showGrid: false,
   });
 
   const setGeoJson = useCallback((geoJson: GeoJson) => {
@@ -72,6 +74,10 @@ export function useMapState() {
     setState((prev) => ({ ...prev, zoom: Math.max(1, Math.min(20, zoom)) }));
   }, []);
 
+  const toggleGrid = useCallback(() => {
+    setState((prev) => ({ ...prev, showGrid: !prev.showGrid }));
+  }, []);
+
   return {
     ...state,
     setGeoJson,
@@ -80,5 +86,6 @@ export function useMapState() {
     setBackgroundColor,
     setCenter,
     setZoom,
+    toggleGrid,
   };
 }
