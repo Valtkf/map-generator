@@ -44,6 +44,12 @@ const PreviewMap = ({
 
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
+    // Ajoutez une vérification pour déboguer
+    console.log(
+      "Token Mapbox disponible:",
+      !!process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+    );
+
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/streets-v11",
