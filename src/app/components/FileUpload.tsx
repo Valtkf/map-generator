@@ -1,8 +1,17 @@
 import React from "react";
 
-const FileUpload = ({ onChange }) => {
+interface FileUploadProps {
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+const FileUpload = ({ onChange }: FileUploadProps) => {
   return (
-    <input type="file" accept=".gpx" onChange={onChange} className="mb-4" />
+    <input
+      type="file"
+      accept=".gpx"
+      onChange={onChange}
+      className="justify-center mb-4 border-[1px]"
+    />
   );
 };
 
