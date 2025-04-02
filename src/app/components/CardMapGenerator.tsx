@@ -122,7 +122,7 @@ const CardMap = () => {
       <div className="w-full max-w-2xl flex justify-end mb-2">
         <button
           onClick={() => setShowGrid(!showGrid)}
-          className={`px-3 py-1 text-sm rounded ${
+          className={`cursor-pointer px-3 py-1 text-sm rounded ${
             showGrid
               ? "bg-blue-500 text-white"
               : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100"
