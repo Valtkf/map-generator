@@ -1,104 +1,93 @@
 import React, { useEffect, useRef } from "react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+
+// Définition du type GeoJSON
+type GeoJSON = {
+  type: "FeatureCollection";
+  features: Array<{
+    type: "Feature";
+    geometry: {
+      type: "LineString" | "Point" | "Polygon";
+      coordinates: number[][] | number[] | number[][][];
+    };
+    properties?: Record<string, unknown>;
+  }>;
+};
 
 interface PreviewMapProps {
-  mapboxStaticUrl: string;
   backgroundColor: string;
-  gpxGeoJson: {
-    features: Array<{
-      geometry: {
-        type: string;
-        coordinates: [number, number][];
-      };
-    }>;
-  };
+  gpxGeoJson: GeoJSON;
+  center: [number, number];
+  zoom: number;
 }
 
 const PreviewMap = ({
-  mapboxStaticUrl,
   backgroundColor,
   gpxGeoJson,
+  center,
+  zoom,
 }: PreviewMapProps) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  // Fonction de projection simplifiée : à adapter selon le rendu Mapbox
-  const project = (
-    lng: number,
-    lat: number,
-    width: number,
-    height: number
-  ): [number, number] => {
-    // Cette implémentation suppose une correspondance linéaire pour l'exemple
-    // Dans un cas réel, il faut tenir compte du centre et du zoom utilisés pour l'image statique
-    const x = ((lng + 180) / 360) * width;
-    const y = ((90 - lat) / 180) * height;
-    return [x, y];
-  };
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
+    if (!mapContainer.current) return;
 
-    // Chargement de l'image de fond depuis Mapbox Static API
-    const image = new Image();
-    image.crossOrigin = "anonymous"; // pour éviter les problèmes de CORS
-    image.src = mapboxStaticUrl;
-    image.onload = () => {
-      // Affichage de l'image de fond sur le canvas
-      ctx.drawImage(image, 0, 0, canvasWidth, canvasHeight);
+    // Vérifier que les coordonnées sont valides
+    const validCenter: [number, number] = [
+      isNaN(center[0]) ? 0 : center[0],
+      isNaN(center[1]) ? 0 : center[1],
+    ];
 
-      // Si un tracé GPX (converti en GeoJSON) est fourni, on le dessine
-      if (gpxGeoJson && gpxGeoJson.features) {
-        ctx.beginPath();
-        gpxGeoJson.features.forEach((feature) => {
-          if (feature.geometry.type === "LineString") {
-            const coords = feature.geometry.coordinates;
-            coords.forEach((coord, index) => {
-              const [x, y] = project(
-                coord[0],
-                coord[1],
-                canvasWidth,
-                canvasHeight
-              );
-              if (index === 0) {
-                ctx.moveTo(x, y);
-              } else {
-                ctx.lineTo(x, y);
-              }
-            });
-          }
+    const validZoom = isNaN(zoom) ? 1 : zoom;
+
+    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: "mapbox://styles/mapbox/streets-v11",
+      center: validCenter,
+      zoom: validZoom,
+    });
+
+    map.current.on("load", () => {
+      if (!map.current) return;
+
+      // Ajouter le tracé GPX
+      if (gpxGeoJson?.features?.length > 0) {
+        map.current.addSource("route", {
+          type: "geojson",
+          data: JSON.parse(JSON.stringify(gpxGeoJson)),
         });
-        ctx.strokeStyle = "red";
-        ctx.lineWidth = 3;
-        ctx.stroke();
-      }
-    };
 
-    // Gestion d'erreur lors du chargement de l'image
-    image.onerror = () => {
-      console.error("Erreur lors du chargement de l'image Mapbox");
+        map.current.addLayer({
+          id: "route",
+          type: "line",
+          source: "route",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": "#000000",
+            "line-width": 2,
+          },
+        });
+      }
+    });
+
+    return () => {
+      map.current?.remove();
     };
-  }, [mapboxStaticUrl, gpxGeoJson]);
+  }, [center, zoom, gpxGeoJson]);
 
   return (
     <div
       style={{ backgroundColor }}
-      className="relative w-full max-w-md h-64 border border-gray-300 flex items-center justify-center"
+      className="relative w-full max-w-2xl h-96 border border-gray-300"
     >
-      <canvas
-        ref={canvasRef}
-        className="maplibregl-canvas"
-        tabIndex={0}
-        aria-label="Map"
-        role="region"
-        width={600}
-        height={800}
-        style={{ width: "100%", height: "100%" }}
-      />
-      <p className="text-gray-500 absolute">Aperçu de la carte</p>
+      <div ref={mapContainer} className="w-full h-full" />
     </div>
   );
 };

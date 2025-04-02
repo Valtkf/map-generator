@@ -1,44 +1,63 @@
 "use client";
 
 import React, { useState } from "react";
-import TextInput from "./TextInput";
+
 import FileUpload from "./FileUpload";
 import ColorSelector from "./ColorSelector";
-import ZoomSelector from "./ZoomSelector";
+
 import GenerateMapButton from "./GenerateMapButton";
 import PreviewMap from "./PreviewMap";
-import { generateMapboxPreviewUrl } from "../utils/mapbox";
+import { GeoJson, calculateBounds } from "../utils/gpx";
+import { MapControls } from "./MapControls";
 
 const CardMap = () => {
-  const [raceName, setRaceName] = useState("");
-  // const [gpxFile, setGpxFile] = useState(null);
   const [backgroundColor, setBackgroundColor] = useState("#FFFFFF");
-  const [zoomLevel, setZoomLevel] = useState(100);
   const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]);
   const [mapZoom, setMapZoom] = useState(1);
+  const [geoJson, setGeoJson] = useState<GeoJson | null>(null);
 
-  const mapboxUrl = generateMapboxPreviewUrl({
-    center: mapCenter,
-    zoom: mapZoom,
-    token: process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "",
-  });
+  const handleGpxFile = (parsedGeoJson: GeoJson) => {
+    console.log("GeoJSON parsé:", parsedGeoJson);
+    setGeoJson(parsedGeoJson);
+    const { center, zoom } = calculateBounds(parsedGeoJson);
+    console.log("Centre calculé:", center, "Zoom calculé:", zoom);
+    setMapCenter(center);
+    setMapZoom(zoom);
+  };
+
+  const handleMove = (direction: "up" | "down" | "left" | "right") => {
+    const step = 0.01;
+    switch (direction) {
+      case "up":
+        setMapCenter([mapCenter[0], mapCenter[1] + step]);
+        break;
+      case "down":
+        setMapCenter([mapCenter[0], mapCenter[1] - step]);
+        break;
+      case "left":
+        setMapCenter([mapCenter[0] - step, mapCenter[1]]);
+        break;
+      case "right":
+        setMapCenter([mapCenter[0] + step, mapCenter[1]]);
+        break;
+    }
+  };
+
+  const handleZoom = (type: "in" | "out") => {
+    const newZoom = type === "in" ? mapZoom + 0.5 : mapZoom - 0.5;
+    setMapZoom(Math.max(1, Math.min(20, newZoom)));
+  };
 
   return (
     <div className="flex flex-col items-center p-4">
       <h1 className="text-2xl font-bold mb-4">Générateur de carte</h1>
 
-      <TextInput
-        value={raceName}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-          setRaceName(e.target.value)
-        }
-      />
-      <FileUpload onChange={() => void 0} />
+      <FileUpload onChange={handleGpxFile} />
       <ColorSelector
         backgroundColor={backgroundColor}
         setBackgroundColor={setBackgroundColor}
       />
-      <ZoomSelector zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} />
+
       <GenerateMapButton
         onClick={() => {
           /* Logique pour générer la carte à implémenter plus tard */
@@ -78,12 +97,12 @@ const CardMap = () => {
           />
         </div>
       </div>
+      <MapControls onMove={handleMove} onZoom={handleZoom} />
       <PreviewMap
-        mapboxStaticUrl={mapboxUrl}
         backgroundColor={backgroundColor}
-        gpxGeoJson={{
-          features: [],
-        }}
+        gpxGeoJson={geoJson || { type: "FeatureCollection", features: [] }}
+        center={mapCenter}
+        zoom={mapZoom}
       />
     </div>
   );

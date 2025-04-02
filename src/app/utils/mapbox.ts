@@ -13,10 +13,8 @@ export const generateMapboxPreviewUrl = ({
   zoom = 1,
   token,
 }: MapboxUrlParams): string => {
-  // Taille réduite pour la preview
-  return `https://api.mapbox.com/styles/v1/mapbox/${style}/static/${center.join(
-    ","
-  )},${zoom}/600x800?access_token=${token}`;
+  // Ajout des paramètres pour le style de la carte
+  return `https://api.mapbox.com/styles/v1/mapbox/${style}/static/pin-s+f00(${center[0]},${center[1]})/${center[0]},${center[1]},${zoom}/800x1000?access_token=${token}`;
 };
 
 export const generateMapboxExportUrl = ({
