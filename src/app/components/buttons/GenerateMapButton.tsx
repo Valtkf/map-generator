@@ -1,11 +1,6 @@
 import React from "react";
-// import { generateMapboxExportUrl } from "../../utils/mapbox";
 import { GeoJson } from "../../utils/gpx";
 import mapboxgl from "mapbox-gl";
-import type { GeoJSON } from "geojson";
-import { toPng } from "html-to-image";
-// import { MapboxExportControl } from "mapbox-gl-export-control";
-// import "mapbox-gl-export-control/lib/mapbox-gl-export-control.css";
 
 interface GenerateMapButtonProps {
   onClick: () => void;
