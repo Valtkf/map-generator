@@ -93,20 +93,20 @@ const PreviewMap = ({
   return (
     <div
       style={{ backgroundColor }}
-      className="relative w-full max-w-2xl h-96 border border-gray-300"
+      className="ml-10 relative w-[400px] h-[610px] md:h-[610px] border border-gray-300"
     >
       <div ref={mapContainer} className="w-full h-full" />
 
       {/* Grille de repérage */}
       {showGrid && (
-        <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {/* Lignes horizontales */}
           <div className="grid-lines-horizontal">
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={`h-${i}`}
-                className="absolute w-full border-t border-white border-opacity-30"
-                style={{ top: `${(i + 1) * 20}%` }}
+                className="absolute w-full border-t border-white border-opacity-40"
+                style={{ top: `${(i + 1) * 20}%`, left: 0, right: 0 }}
               />
             ))}
           </div>
@@ -116,14 +116,24 @@ const PreviewMap = ({
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={`v-${i}`}
-                className="absolute h-full border-l border-white border-opacity-30"
-                style={{ left: `${(i + 1) * 20}%` }}
+                className="absolute h-full border-l border-white border-opacity-40"
+                style={{ left: `${(i + 1) * 20}%`, top: 0, bottom: 0 }}
               />
             ))}
           </div>
 
+          {/* Lignes centrales (plus visibles) */}
+          <div
+            className="absolute top-1/2 w-full border-t border-white border-opacity-60"
+            style={{ transform: "translateY(-0.5px)" }}
+          />
+          <div
+            className="absolute left-1/2 h-full border-l border-white border-opacity-60"
+            style={{ transform: "translateX(-0.5px)" }}
+          />
+
           {/* Point central */}
-          <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-red-500 rounded-full transform -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-red-500 rounded-full transform -translate-x-1/2 -translate-y-1/2" />
         </div>
       )}
     </div>

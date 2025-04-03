@@ -16,14 +16,6 @@ interface MapState {
   geoJson: GeoJson | null;
 }
 
-// Définir l'interface pour les props de CoordinateInputs
-interface CoordinateInputsProps {
-  center: [number, number];
-  zoom: number;
-  onCenterChange: (center: [number, number]) => void;
-  onZoomChange: (zoom: number) => void;
-}
-
 const CardMap = () => {
   // État regroupé
   const [mapState, setMapState] = useState<MapState>({
@@ -90,100 +82,53 @@ const CardMap = () => {
   const { center, zoom, backgroundColor, geoJson } = mapState;
 
   return (
-    <div className="flex flex-col items-center p-4">
-      <h1 className="text-2xl font-bold mb-4">Générateur de carte</h1>
+    <div className="p-4 max-w-7xl mx-auto">
+      {/* Conteneur principal avec flex */}
+      <div className="flex flex-col md:flex-row gap-8">
+        {/* Colonne de gauche avec le titre et les contrôles - réduire la largeur */}
+        <div className="flex flex-col md:w-1/4">
+          <h1 className="text-2xl font-bold mb-6">Générateur de carte</h1>
 
-      <FileUpload onChange={handleGpxFile} />
-      <ColorSelector
-        backgroundColor={backgroundColor}
-        setBackgroundColor={handleBackgroundChange}
-      />
+          <FileUpload onChange={handleGpxFile} />
+          <ColorSelector
+            backgroundColor={backgroundColor}
+            setBackgroundColor={handleBackgroundChange}
+          />
 
-      <GenerateMapButton
-        onClick={() => {
-          /* Logique pour générer la carte à implémenter plus tard */
-        }}
-      />
+          <GenerateMapButton
+            onClick={() => {
+              /* Logique pour générer la carte à implémenter plus tard */
+            }}
+          />
 
-      <CoordinateInputs
-        center={center}
-        zoom={zoom}
-        onCenterChange={(newCenter) =>
-          setMapState((prev) => ({ ...prev, center: newCenter }))
-        }
-        onZoomChange={(newZoom) =>
-          setMapState((prev) => ({ ...prev, zoom: newZoom }))
-        }
-      />
+          <MapControls onMove={handleMove} onZoom={handleZoom} />
+        </div>
 
-      <MapControls onMove={handleMove} onZoom={handleZoom} />
+        {/* Colonne de droite avec la carte - augmenter la largeur */}
+        <div className="md:w-3/4">
+          {/* Bouton de grille au-dessus de la carte, aligné à droite */}
+          <div className="w-full flex justify-end mb-2">
+            <button
+              onClick={() => setShowGrid(!showGrid)}
+              className={`cursor-pointer px-3 py-1 text-sm rounded ${
+                showGrid
+                  ? "bg-blue-500 text-white"
+                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100"
+              }`}
+            >
+              {showGrid ? "Masquer grille" : "Afficher grille"}
+            </button>
+          </div>
 
-      {/* Bouton de grille au-dessus de la carte, aligné à droite */}
-      <div className="w-full max-w-2xl flex justify-end mb-2">
-        <button
-          onClick={() => setShowGrid(!showGrid)}
-          className={`cursor-pointer px-3 py-1 text-sm rounded ${
-            showGrid
-              ? "bg-blue-500 text-white"
-              : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100"
-          }`}
-        >
-          {showGrid ? "Masquer grille" : "Afficher grille"}
-        </button>
-      </div>
-
-      {/* Carte */}
-      <PreviewMap
-        backgroundColor={backgroundColor}
-        gpxGeoJson={geoJson || { type: "FeatureCollection", features: [] }}
-        center={center}
-        zoom={zoom}
-        showGrid={showGrid}
-      />
-    </div>
-  );
-};
-
-// Composant pour les entrées de coordonnées
-const CoordinateInputs = ({
-  center,
-  zoom,
-  onCenterChange,
-  onZoomChange,
-}: CoordinateInputsProps) => {
-  return (
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700">
-        Position de la carte
-      </label>
-      <div className="flex gap-4 mt-2">
-        <input
-          type="number"
-          value={center[0]}
-          onChange={(e) =>
-            onCenterChange([parseFloat(e.target.value), center[1]])
-          }
-          placeholder="Longitude"
-          className="border p-2"
-        />
-        <input
-          type="number"
-          value={center[1]}
-          onChange={(e) =>
-            onCenterChange([center[0], parseFloat(e.target.value)])
-          }
-          placeholder="Latitude"
-          className="border p-2"
-        />
-        <input
-          type="number"
-          value={zoom}
-          onChange={(e) =>
-            onZoomChange(Math.max(0, Math.min(22, parseFloat(e.target.value))))
-          }
-          placeholder="Zoom"
-          className="border p-2"
-        />
+          {/* Carte */}
+          <PreviewMap
+            backgroundColor={backgroundColor}
+            gpxGeoJson={geoJson || { type: "FeatureCollection", features: [] }}
+            center={center}
+            zoom={zoom}
+            showGrid={showGrid}
+          />
+        </div>
       </div>
     </div>
   );
