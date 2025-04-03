@@ -115,6 +115,7 @@ const CardMap = () => {
             zoom={zoom}
             gpxGeoJson={geoJson}
             isLoading={isGenerating}
+            backgroundColor={backgroundColor}
           />
 
           <MapControls onMove={handleMove} onZoom={handleZoom} />
