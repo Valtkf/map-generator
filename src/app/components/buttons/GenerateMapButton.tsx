@@ -1,7 +1,9 @@
 import React from "react";
 import { GeoJson } from "../../utils/gpx";
 import mapboxgl from "mapbox-gl";
-import type { GeoJSON } from "geojson";
+import { MAP_STYLES } from "../inputs/ColorSelector";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
 
 interface GenerateMapButtonProps {
   center: [number, number];
@@ -9,6 +11,13 @@ interface GenerateMapButtonProps {
   gpxGeoJson: GeoJson | null;
   isLoading?: boolean;
   onClick: () => void;
+  backgroundColor: string;
+}
+
+// Définir un type pour le GeoJSON de Mapbox
+interface MapboxGeoJSON {
+  type: "FeatureCollection";
+  features: Array<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 const GenerateMapButton = ({
@@ -17,11 +26,69 @@ const GenerateMapButton = ({
   gpxGeoJson,
   isLoading = false,
   onClick,
+  backgroundColor,
 }: GenerateMapButtonProps) => {
   const handleGenerateMap = async () => {
     // Appeler la fonction onClick pour toute logique supplémentaire
     onClick();
 
+    // Créer un élément de chargement
+    const loadingElement = document.createElement("div");
+    loadingElement.innerHTML = `
+      <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                  background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px; z-index: 9999;">
+        <p>Génération des cartes en cours...</p>
+        <p>Veuillez patienter, cela peut prendre quelques instants.</p>
+      </div>
+    `;
+    document.body.appendChild(loadingElement);
+
+    try {
+      // Créer un nouvel objet ZIP
+      const zip = new JSZip();
+
+      // Générer les cartes pour tous les styles et les ajouter au ZIP
+      const svgContents = await Promise.all(
+        MAP_STYLES.map(async (mapStyle) => {
+          const { svgContent, styleName } = await generateMapForStyle(
+            mapStyle.id,
+            mapStyle.name,
+            mapStyle.url
+          );
+          return { svgContent, styleName };
+        })
+      );
+
+      // Ajouter chaque SVG au ZIP
+      svgContents.forEach(({ svgContent, styleName }) => {
+        const fileName = `carte-${styleName}-${
+          new Date().toISOString().split("T")[0]
+        }.svg`;
+        zip.file(fileName, svgContent);
+      });
+
+      // Générer le ZIP et le télécharger
+      const zipContent = await zip.generateAsync({ type: "blob" });
+      saveAs(
+        zipContent,
+        `cartes-${new Date().toISOString().split("T")[0]}.zip`
+      );
+    } catch (error) {
+      console.error("Erreur lors de la génération des cartes:", error);
+      alert(
+        "Une erreur est survenue lors de la génération des cartes. Veuillez réessayer."
+      );
+    } finally {
+      // Supprimer l'indicateur de chargement
+      document.body.removeChild(loadingElement);
+    }
+  };
+
+  const generateMapForStyle = async (
+    styleId: string,
+    styleName: string,
+    styleUrl: string
+  ) => {
     // Créer un conteneur temporaire pour la carte
     const mapContainer = document.createElement("div");
     mapContainer.style.width = "3508px";
@@ -36,166 +103,170 @@ const GenerateMapButton = ({
       process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
       "pk.eyJ1IjoicHlyMjUiLCJhIjoiY204dTAwazVrMDVhbDJrcXdveGpnZmI3aSJ9.ZV6Um_KXZL-SxHqpZPMWxQ";
 
-    const map = new mapboxgl.Map({
-      container: mapContainer,
-      style: "mapbox://styles/mapbox/light-v10",
-      center: center,
-      zoom: zoom,
-      preserveDrawingBuffer: true,
-      interactive: false,
-      attributionControl: false,
-      logoPosition: "bottom-right",
-    });
-
-    // Gérer les images manquantes
-    map.on("styleimagemissing", (e) => {
-      const emptyImage = new ImageData(1, 1);
-      map.addImage(e.id, emptyImage);
-      console.log(`Image manquante remplacée: ${e.id}`);
-    });
-
-    map.on("load", () => {
-      // Ajouter le tracé GPX si disponible
-      if (gpxGeoJson && gpxGeoJson.features.length > 0) {
-        // Convertir GeoJson en GeoJSON compatible avec Mapbox
-        const mapboxGeoJson = {
-          type: "FeatureCollection",
-          features: gpxGeoJson.features,
-        } as unknown as GeoJSON;
-
-        // Ajouter la source avec le format correct
-        map.addSource("gpx-track", {
-          type: "geojson",
-          data: mapboxGeoJson,
-        });
-
-        // Ajouter la couche de ligne pour le tracé
-        map.addLayer({
-          id: "gpx-track-line",
-          type: "line",
-          source: "gpx-track",
-          layout: {
-            "line-join": "round",
-            "line-cap": "round",
-          },
-          paint: {
-            "line-color": "#000000",
-            "line-width": 8,
-          },
-          filter: ["==", "$type", "LineString"],
-        });
-      }
-
-      map.once("idle", async () => {
+    return new Promise<{ svgContent: string; styleName: string }>(
+      (resolve, reject) => {
         try {
-          // Rendre le conteneur visible temporairement
-          mapContainer.style.visibility = "visible";
+          const map = new mapboxgl.Map({
+            container: mapContainer,
+            style:
+              styleId === "trace-only"
+                ? {
+                    version: 8,
+                    sources: {},
+                    layers: [
+                      {
+                        id: "background",
+                        type: "background",
+                        paint: {
+                          "background-color": backgroundColor || "#FFFFFF",
+                        },
+                      },
+                    ],
+                  }
+                : styleUrl,
+            center: center,
+            zoom: zoom,
+            preserveDrawingBuffer: true,
+            interactive: false,
+            attributionControl: false,
+            logoPosition: "bottom-right",
+          });
 
-          // Attendre un peu pour s'assurer que tout est rendu
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          // Gérer les images manquantes
+          map.on("styleimagemissing", (e) => {
+            const emptyImage = new ImageData(1, 1);
+            map.addImage(e.id, emptyImage);
+          });
 
-          // Capturer directement le canvas de la carte
-          const canvas = map.getCanvas();
+          map.on("load", () => {
+            // Ajouter le tracé GPX si disponible
+            if (gpxGeoJson && gpxGeoJson.features.length > 0) {
+              // Convertir GeoJson en GeoJSON compatible avec Mapbox
+              const mapboxGeoJson: MapboxGeoJSON = {
+                type: "FeatureCollection",
+                features: gpxGeoJson.features,
+              };
 
-          // Réduire davantage la taille et utiliser JPEG pour une meilleure compression
-          const compressedCanvas = document.createElement("canvas");
-          const ctx = compressedCanvas.getContext("2d");
-          const scaleFactor = 0.7; // Réduction plus importante (70%)
+              // Ajouter la source avec le format correct
+              map.addSource("gpx-track", {
+                type: "geojson",
+                data: mapboxGeoJson,
+              });
 
-          // Définir les dimensions du canvas compressé
-          compressedCanvas.width = canvas.width * scaleFactor;
-          compressedCanvas.height = canvas.height * scaleFactor;
+              // Ajouter la couche de ligne pour le tracé
+              map.addLayer({
+                id: "gpx-track-line",
+                type: "line",
+                source: "gpx-track",
+                layout: {
+                  "line-join": "round",
+                  "line-cap": "round",
+                },
+                paint: {
+                  "line-color": "#000000",
+                  "line-width": 8,
+                },
+                filter: ["==", "$type", "LineString"],
+              });
+            }
 
-          // Dessiner l'image redimensionnée
-          if (ctx) {
-            ctx.drawImage(
-              canvas,
-              0,
-              0,
-              compressedCanvas.width,
-              compressedCanvas.height
-            );
-          }
+            map.once("idle", async () => {
+              try {
+                // Rendre le conteneur visible temporairement
+                mapContainer.style.visibility = "visible";
 
-          // Utiliser JPEG au lieu de PNG pour une meilleure compression
-          const dataUrl = compressedCanvas.toDataURL("image/jpeg", 0.85);
+                // Attendre un peu pour s'assurer que tout est rendu
+                await new Promise((r) => setTimeout(r, 1000));
 
-          // Afficher l'indicateur de chargement
-          const loadingElement = document.createElement("div");
-          loadingElement.innerHTML = `
-            <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-                        background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px; z-index: 9999;">
-              <p>Génération du SVG en cours...</p>
-              <p>Veuillez patienter, cela peut prendre quelques instants.</p>
-            </div>
-          `;
-          document.body.appendChild(loadingElement);
+                // Capturer directement le canvas de la carte
+                const canvas = map.getCanvas();
 
-          // Créer le SVG avec l'image compressée
-          const svgContent = `<svg width="3508" height="4961" xmlns="http://www.w3.org/2000/svg">
-            <image x="0" y="0" width="3508" height="4961" href="${dataUrl}"/>
-          </svg>`;
+                // Réduire davantage la taille et utiliser JPEG pour une meilleure compression
+                const compressedCanvas = document.createElement("canvas");
+                const ctx = compressedCanvas.getContext("2d");
+                const scaleFactor = 0.7; // Réduction plus importante (70%)
 
-          // Convertir le SVG en Blob
-          const svgBlob = new Blob([svgContent], { type: "image/svg+xml" });
-          const svgUrl = URL.createObjectURL(svgBlob);
+                // Définir les dimensions du canvas compressé
+                compressedCanvas.width = canvas.width * scaleFactor;
+                compressedCanvas.height = canvas.height * scaleFactor;
 
-          // Télécharger le SVG
-          const svgLink = document.createElement("a");
-          svgLink.href = svgUrl;
-          svgLink.download = `carte-${
-            new Date().toISOString().split("T")[0]
-          }.svg`;
-          document.body.appendChild(svgLink);
-          svgLink.click();
-          document.body.removeChild(svgLink);
-          URL.revokeObjectURL(svgUrl);
+                // Dessiner l'image redimensionnée
+                if (ctx) {
+                  ctx.drawImage(
+                    canvas,
+                    0,
+                    0,
+                    compressedCanvas.width,
+                    compressedCanvas.height
+                  );
+                }
 
-          // Supprimer l'indicateur de chargement
-          document.body.removeChild(loadingElement);
+                // Utiliser JPEG au lieu de PNG pour une meilleure compression
+                const dataUrl = compressedCanvas.toDataURL("image/jpeg", 0.85);
+
+                // Créer le SVG avec l'image compressée
+                const svgContent = `<svg width="3508" height="4961" xmlns="http://www.w3.org/2000/svg">
+                <image x="0" y="0" width="3508" height="4961" href="${dataUrl}"/>
+              </svg>`;
+
+                // Au lieu de télécharger directement, retourner le contenu SVG
+                map.remove();
+                document.body.removeChild(mapContainer);
+                resolve({ svgContent, styleName });
+              } catch (error) {
+                console.error(
+                  `Erreur lors de la génération de la carte ${styleName}:`,
+                  error
+                );
+                map.remove();
+                document.body.removeChild(mapContainer);
+                reject(error);
+              }
+            });
+          });
+
+          map.once("style.load", () => {
+            // Simplifier la carte en supprimant les couches non essentielles
+            const layersToRemove = [
+              "poi-label",
+              "transit-label",
+              "natural-point-label",
+              "natural-line-label",
+            ];
+            layersToRemove.forEach((layer) => {
+              if (map.getLayer(layer)) {
+                map.removeLayer(layer);
+              }
+            });
+
+            // Pour le style trace-only, pas besoin de modifications supplémentaires
+            if (styleId !== "trace-only") {
+              // Rendre toutes les routes en noir pour le style minimaliste
+              if (styleId === "minimaliste") {
+                const roadLayers = [
+                  "road",
+                  "road-secondary-tertiary",
+                  "road-primary",
+                  "road-motorway-trunk",
+                ];
+                roadLayers.forEach((layer) => {
+                  if (map.getLayer(layer)) {
+                    map.setPaintProperty(layer, "line-color", "#000000");
+                  }
+                });
+              }
+            }
+          });
         } catch (error) {
-          console.error("Erreur lors de la génération de la carte:", error);
-          alert(
-            "Une erreur est survenue lors de la génération de la carte. Veuillez réessayer."
+          console.error(
+            `Erreur lors de l'initialisation de la carte ${styleName}:`,
+            error
           );
-          map.remove();
           document.body.removeChild(mapContainer);
+          reject(error);
         }
-      });
-    });
-
-    map.once("style.load", () => {
-      // Simplifier la carte en supprimant les couches non essentielles
-      const layersToRemove = [
-        "poi-label",
-        "transit-label",
-        "natural-point-label",
-        "natural-line-label",
-      ];
-      layersToRemove.forEach((layer) => {
-        if (map.getLayer(layer)) {
-          map.removeLayer(layer);
-        }
-      });
-
-      // Rendre le fond complètement blanc
-      if (map.getLayer("background")) {
-        map.setPaintProperty("background", "background-color", "#ffffff");
       }
-
-      // Rendre toutes les routes en noir
-      const roadLayers = [
-        "road",
-        "road-secondary-tertiary",
-        "road-primary",
-        "road-motorway-trunk",
-      ];
-      roadLayers.forEach((layer) => {
-        if (map.getLayer(layer)) {
-          map.setPaintProperty(layer, "line-color", "#000000");
-        }
-      });
-    });
+    );
   };
 
   return (
@@ -229,7 +300,7 @@ const GenerateMapButton = ({
           Génération en cours...
         </span>
       ) : (
-        "Générer la carte"
+        "Générer les 4 styles de carte"
       )}
     </button>
   );

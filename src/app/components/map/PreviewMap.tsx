@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { MAP_STYLES } from "../inputs/ColorSelector";
 
 // Définition du type GeoJSON
 type GeoJSON = {
@@ -21,6 +22,7 @@ interface PreviewMapProps {
   center: [number, number];
   zoom: number;
   showGrid?: boolean;
+  selectedStyle: string;
 }
 
 const PreviewMap = ({
@@ -29,6 +31,7 @@ const PreviewMap = ({
   center,
   zoom,
   showGrid = false,
+  selectedStyle,
 }: PreviewMapProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -46,24 +49,58 @@ const PreviewMap = ({
 
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
-    // Ajoutez une vérification pour déboguer
-    console.log(
-      "Token Mapbox disponible:",
-      !!process.env.NEXT_PUBLIC_MAPBOX_TOKEN
-    );
+    // Trouver le style sélectionné
+    const style = MAP_STYLES.find((s) => s.id === selectedStyle);
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/streets-v11",
-      center: validCenter,
-      zoom: validZoom,
-    });
+    // Utiliser le style par défaut si aucun style n'est trouvé
+    const mapStyle = style?.url || "mapbox://styles/mapbox/streets-v11";
+
+    // Nettoyer la carte précédente avec vérification
+    if (map.current) {
+      try {
+        map.current.remove();
+      } catch (e) {
+        console.warn("Erreur lors de la suppression de la carte:", e);
+      }
+    }
+
+    // Créer une nouvelle carte
+    try {
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style:
+          selectedStyle === "trace-only"
+            ? {
+                version: 8,
+                sources: {},
+                layers: [
+                  {
+                    id: "background",
+                    type: "background",
+                    paint: { "background-color": backgroundColor },
+                  },
+                ],
+              }
+            : mapStyle,
+        center: validCenter,
+        zoom: validZoom,
+      });
+    } catch (e) {
+      console.error("Erreur lors de la création de la carte:", e);
+      return;
+    }
 
     map.current.on("load", () => {
       if (!map.current) return;
 
       // Ajouter le tracé GPX
       if (gpxGeoJson?.features?.length > 0) {
+        // Si la source existe déjà, la supprimer
+        if (map.current.getSource("route")) {
+          map.current.removeLayer("route");
+          map.current.removeSource("route");
+        }
+
         map.current.addSource("route", {
           type: "geojson",
           data: JSON.parse(JSON.stringify(gpxGeoJson)),
@@ -86,13 +123,26 @@ const PreviewMap = ({
     });
 
     return () => {
-      map.current?.remove();
+      // Nettoyer avec vérification
+      if (map.current) {
+        try {
+          // Vérifier si la carte est toujours valide avant de la supprimer
+          if (map.current._loaded && !map.current._removed) {
+            map.current.remove();
+          }
+        } catch (e) {
+          console.warn("Erreur lors du nettoyage de la carte:", e);
+        }
+      }
     };
-  }, [center, zoom, gpxGeoJson]);
+  }, [center, zoom, gpxGeoJson, selectedStyle, backgroundColor]);
 
   return (
     <div
-      style={{ backgroundColor }}
+      style={{
+        backgroundColor:
+          selectedStyle === "trace-only" ? backgroundColor : undefined,
+      }}
       className="ml-10 relative w-[400px] h-[610px] md:h-[610px] border border-gray-300"
     >
       <div ref={mapContainer} className="w-full h-full" />
