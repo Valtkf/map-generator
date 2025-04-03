@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 
+// Marquer cette fonction comme une Edge Function
+export const config = {
+  runtime: "edge",
+};
+
 export async function POST(req: NextRequest) {
   try {
     console.log("Début de la conversion en SVG");
@@ -26,27 +31,28 @@ export async function POST(req: NextRequest) {
     console.log(`Buffer créé, taille: ${buffer.length} octets`);
 
     try {
-      // Redimensionner l'image avec sharp
-      console.log("Redimensionnement de l'image...");
+      // Redimensionner l'image avec sharp et optimiser fortement
+      console.log("Redimensionnement et optimisation de l'image...");
       const resizedBuffer = await sharp(buffer)
         .resize({
-          width: 1754, // Moitié de 3508
-          height: 2480, // Moitié de 4961
+          width: 1000, // Réduire davantage la taille
+          height: 1400, // Proportionnel à A3
           fit: "contain",
           background: { r: 255, g: 255, b: 255 },
         })
-        .png({
-          compressionLevel: 9, // Maximum compression
-          adaptiveFiltering: true,
+        .jpeg({
+          // Utiliser JPEG pour une meilleure compression
+          quality: 70, // Qualité réduite mais suffisante pour l'impression
+          progressive: true,
         })
         .toBuffer();
 
       console.log(
-        `Image redimensionnée, nouvelle taille: ${resizedBuffer.length} octets`
+        `Image optimisée, nouvelle taille: ${resizedBuffer.length} octets`
       );
 
       // Convertir l'image en base64 pour l'inclure dans le SVG
-      const base64Image = `data:image/png;base64,${resizedBuffer.toString(
+      const base64Image = `data:image/jpeg;base64,${resizedBuffer.toString(
         "base64"
       )}`;
 
