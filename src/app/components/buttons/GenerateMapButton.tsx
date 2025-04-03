@@ -92,6 +92,7 @@ const GenerateMapButton = ({
               <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
                           background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px; z-index: 9999;">
                 <p>Conversion en SVG en cours...</p>
+                <p>Génération d'une carte au format A3 (3508 x 4961 px)</p>
                 <p>Veuillez patienter, cela peut prendre quelques instants.</p>
               </div>
             `;

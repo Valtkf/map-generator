@@ -30,12 +30,15 @@ export async function POST(req: NextRequest) {
       console.log("Redimensionnement de l'image...");
       const resizedBuffer = await sharp(buffer)
         .resize({
-          width: 3508,
-          height: 4961,
+          width: 1754, // Moitié de 3508
+          height: 2480, // Moitié de 4961
           fit: "contain",
           background: { r: 255, g: 255, b: 255 },
         })
-        .png()
+        .png({
+          compressionLevel: 9, // Maximum compression
+          adaptiveFiltering: true,
+        })
         .toBuffer();
 
       console.log(
@@ -47,13 +50,8 @@ export async function POST(req: NextRequest) {
         "base64"
       )}`;
 
-      // Créer un SVG simple qui inclut l'image
-      console.log("Création du SVG...");
-      const svgString = `
-        <svg width="3508" height="4961" xmlns="http://www.w3.org/2000/svg">
-          <image x="0" y="0" width="3508" height="4961" href="${base64Image}" />
-        </svg>
-      `;
+      // Créer un SVG compact
+      const svgString = `<svg width="3508" height="4961" xmlns="http://www.w3.org/2000/svg"><image x="0" y="0" width="3508" height="4961" href="${base64Image}"/></svg>`;
 
       console.log("SVG généré avec succès");
 
