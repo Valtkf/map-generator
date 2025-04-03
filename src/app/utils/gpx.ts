@@ -80,7 +80,9 @@ export const parseGpxFile = async (file: File): Promise<GeoJson> => {
   }
 };
 
-export const calculateBounds = (geoJson: GeoJson) => {
+export const calculateBounds = (
+  geoJson: GeoJson
+): { center: [number, number]; zoom: number } => {
   let minLng = Infinity;
   let maxLng = -Infinity;
   let minLat = Infinity;
@@ -118,12 +120,9 @@ export const calculateBounds = (geoJson: GeoJson) => {
   // Formule pour calculer le zoom optimal (ajuster les valeurs selon vos besoins)
   const zoom = Math.floor(Math.log2(360 / maxDiff)) + 1;
 
+  // Réduire légèrement le zoom pour s'assurer que tout le tracé est visible
   return {
     center: [(minLng + maxLng) / 2, (minLat + maxLat) / 2] as [number, number],
-    zoom: Math.min(Math.max(zoom, 1), 20), // Limiter le zoom entre 1 et 20
-    bounds: [
-      [minLng, minLat],
-      [maxLng, maxLat],
-    ] as [[number, number], [number, number]],
+    zoom: Math.max(1, zoom - 0.5),
   };
 };
