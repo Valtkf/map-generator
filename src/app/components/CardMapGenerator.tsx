@@ -31,6 +31,9 @@ const CardMap = () => {
   // Nouvel état pour la génération de la carte
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // Nouvel état pour le style de carte
+  const [selectedStyle, setSelectedStyle] = useState<string>("minimaliste");
+
   // Gestionnaires d'événements avec useCallback
   const handleGpxFile = useCallback((parsedGeoJson: GeoJson) => {
     const { center, zoom } = calculateBounds(parsedGeoJson);
@@ -102,6 +105,8 @@ const CardMap = () => {
           <ColorSelector
             backgroundColor={backgroundColor}
             setBackgroundColor={handleBackgroundChange}
+            selectedStyle={selectedStyle}
+            setSelectedStyle={setSelectedStyle}
           />
 
           <GenerateMapButton
@@ -110,6 +115,7 @@ const CardMap = () => {
             zoom={zoom}
             gpxGeoJson={geoJson}
             isLoading={isGenerating}
+            backgroundColor={backgroundColor}
           />
 
           <MapControls onMove={handleMove} onZoom={handleZoom} />
@@ -138,6 +144,7 @@ const CardMap = () => {
             center={center}
             zoom={zoom}
             showGrid={showGrid}
+            selectedStyle={selectedStyle}
           />
         </div>
       </div>
