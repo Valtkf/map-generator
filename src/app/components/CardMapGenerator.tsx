@@ -28,6 +28,9 @@ const CardMap = () => {
   // Nouvel état pour la grille
   const [showGrid, setShowGrid] = useState(false);
 
+  // Nouvel état pour la génération de la carte
+  const [isGenerating, setIsGenerating] = useState(false);
+
   // Gestionnaires d'événements avec useCallback
   const handleGpxFile = useCallback((parsedGeoJson: GeoJson) => {
     const { center, zoom } = calculateBounds(parsedGeoJson);
@@ -78,6 +81,12 @@ const CardMap = () => {
     setMapState((prev) => ({ ...prev, backgroundColor: color }));
   }, []);
 
+  const handleGenerateMap = useCallback(() => {
+    setIsGenerating(true);
+    // Réinitialiser l'état après un délai pour l'animation
+    setTimeout(() => setIsGenerating(false), 3000);
+  }, []);
+
   // Extraction des valeurs pour plus de lisibilité
   const { center, zoom, backgroundColor, geoJson } = mapState;
 
@@ -96,9 +105,11 @@ const CardMap = () => {
           />
 
           <GenerateMapButton
-            onClick={() => {
-              /* Logique pour générer la carte à implémenter plus tard */
-            }}
+            onClick={handleGenerateMap}
+            center={center}
+            zoom={zoom}
+            gpxGeoJson={geoJson}
+            isLoading={isGenerating}
           />
 
           <MapControls onMove={handleMove} onZoom={handleZoom} />
