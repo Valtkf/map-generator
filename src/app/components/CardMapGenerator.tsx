@@ -7,6 +7,8 @@ import GenerateMapButton from "./buttons/GenerateMapButton";
 import PreviewMap from "./map/PreviewMap";
 import { MapControls } from "./map/MapControls";
 import { GeoJson, calculateBounds } from "../utils/gpx";
+import CitySearch from "./inputs/CitySearch";
+import FormatSelector, { ExportFormat } from "./inputs/FormatSelector";
 
 // Types
 interface MapState {
@@ -17,24 +19,19 @@ interface MapState {
 }
 
 const CardMap = () => {
-  // État regroupé
+  // États
   const [mapState, setMapState] = useState<MapState>({
     center: [0, 0],
     zoom: 1,
     backgroundColor: "#FFFFFF",
     geoJson: null,
   });
-
-  // Nouvel état pour la grille
   const [showGrid, setShowGrid] = useState(false);
-
-  // Nouvel état pour la génération de la carte
   const [isGenerating, setIsGenerating] = useState(false);
-
-  // Nouvel état pour le style de carte
   const [selectedStyle, setSelectedStyle] = useState<string>("minimaliste");
+  const [exportFormat, setExportFormat] = useState<ExportFormat>("svg");
 
-  // Gestionnaires d'événements avec useCallback
+  // Gestionnaires d'événements
   const handleGpxFile = useCallback((parsedGeoJson: GeoJson) => {
     const { center, zoom } = calculateBounds(parsedGeoJson);
     setMapState((prev) => ({
@@ -86,48 +83,34 @@ const CardMap = () => {
 
   const handleGenerateMap = useCallback(() => {
     setIsGenerating(true);
-    // Réinitialiser l'état après un délai pour l'animation
     setTimeout(() => setIsGenerating(false), 3000);
   }, []);
 
-  // Extraction des valeurs pour plus de lisibilité
+  const handleCitySelect = useCallback((newCenter: [number, number]) => {
+    setMapState((prev) => ({
+      ...prev,
+      center: newCenter,
+      zoom: 12,
+    }));
+  }, []);
+
+  // Extraction des valeurs
   const { center, zoom, backgroundColor, geoJson } = mapState;
 
   return (
-    <div className="p-4 max-w-7xl mx-auto">
-      {/* Conteneur principal avec flex */}
-      <div className="flex flex-col md:flex-row gap-8">
-        {/* Colonne de gauche avec le titre et les contrôles - réduire la largeur */}
-        <div className="flex flex-col md:w-1/4">
-          <h1 className="text-2xl font-bold mb-6">Générateur de carte</h1>
+    <div className="p-6 max-w-7xl mx-auto">
+      <h1 className="text-3xl font-bold mb-8 text-center">
+        Générateur de carte
+      </h1>
 
-          <FileUpload onChange={handleGpxFile} />
-          <ColorSelector
-            backgroundColor={backgroundColor}
-            setBackgroundColor={handleBackgroundChange}
-            selectedStyle={selectedStyle}
-            setSelectedStyle={setSelectedStyle}
-          />
-
-          <GenerateMapButton
-            onClick={handleGenerateMap}
-            center={center}
-            zoom={zoom}
-            gpxGeoJson={geoJson}
-            isLoading={isGenerating}
-            backgroundColor={backgroundColor}
-          />
-
-          <MapControls onMove={handleMove} onZoom={handleZoom} />
-        </div>
-
-        {/* Colonne de droite avec la carte - augmenter la largeur */}
-        <div className="md:w-3/4">
-          {/* Bouton de grille au-dessus de la carte, aligné à droite */}
-          <div className="w-full flex justify-end mb-2">
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Panneau de gauche: Prévisualisation */}
+        <div className="lg:w-1/2 flex flex-col items-center">
+          <div className="w-full flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Prévisualisation</h2>
             <button
               onClick={() => setShowGrid(!showGrid)}
-              className={`cursor-pointer px-3 py-1 text-sm rounded ${
+              className={`px-3 py-1 text-sm rounded transition-colors ${
                 showGrid
                   ? "bg-blue-500 text-white"
                   : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100"
@@ -137,15 +120,60 @@ const CardMap = () => {
             </button>
           </div>
 
-          {/* Carte */}
-          <PreviewMap
-            backgroundColor={backgroundColor}
-            gpxGeoJson={geoJson || { type: "FeatureCollection", features: [] }}
-            center={center}
-            zoom={zoom}
-            showGrid={showGrid}
-            selectedStyle={selectedStyle}
-          />
+          <div className="relative">
+            <PreviewMap
+              backgroundColor={backgroundColor}
+              gpxGeoJson={
+                geoJson || { type: "FeatureCollection", features: [] }
+              }
+              center={center}
+              zoom={zoom}
+              showGrid={showGrid}
+              selectedStyle={selectedStyle}
+            />
+
+            {/* Contrôles de carte superposés */}
+            <div className="absolute bottom-4 right-4 bg-white bg-opacity-80 p-2 rounded-lg shadow-md">
+              <MapControls onMove={handleMove} onZoom={handleZoom} />
+            </div>
+          </div>
+        </div>
+
+        {/* Panneau de droite: Contrôles */}
+        <div className="lg:w-1/2 flex flex-col">
+          <div className="bg-gray-50 p-6 rounded-lg shadow-sm mb-6">
+            <h2 className="text-xl font-semibold mb-4">Données</h2>
+            <FileUpload onChange={handleGpxFile} />
+            <CitySearch onCitySelect={handleCitySelect} />
+          </div>
+
+          <div className="bg-gray-50 p-6 rounded-lg shadow-sm mb-6">
+            <h2 className="text-xl font-semibold mb-4">Apparence</h2>
+            <ColorSelector
+              backgroundColor={backgroundColor}
+              setBackgroundColor={handleBackgroundChange}
+              selectedStyle={selectedStyle}
+              setSelectedStyle={setSelectedStyle}
+            />
+          </div>
+
+          <div className="bg-gray-50 p-6 rounded-lg shadow-sm mb-6">
+            <h2 className="text-xl font-semibold mb-4">Export</h2>
+            <FormatSelector
+              selectedFormat={exportFormat}
+              setSelectedFormat={setExportFormat}
+            />
+
+            <GenerateMapButton
+              onClick={handleGenerateMap}
+              center={center}
+              zoom={zoom}
+              gpxGeoJson={geoJson}
+              isLoading={isGenerating}
+              backgroundColor={backgroundColor}
+              exportFormat={exportFormat}
+            />
+          </div>
         </div>
       </div>
     </div>

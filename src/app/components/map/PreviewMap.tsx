@@ -148,7 +148,7 @@ const PreviewMap = ({
         backgroundColor:
           selectedStyle === "trace-only" ? backgroundColor : undefined,
       }}
-      className="ml-10 relative w-[400px] h-[610px] md:h-[610px] border border-gray-300"
+      className="ml-20 relative w-[400px] h-[610px] md:h-[610px] border border-gray-300"
     >
       <div ref={mapContainer} className="w-full h-full" />
 
@@ -160,7 +160,7 @@ const PreviewMap = ({
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={`h-${i}`}
-                className="absolute w-full border-t border-white border-opacity-40"
+                className="absolute w-full border-t border-dashed border-red-500 border-opacity-30"
                 style={{ top: `${(i + 1) * 20}%`, left: 0, right: 0 }}
               />
             ))}
@@ -171,7 +171,7 @@ const PreviewMap = ({
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={`v-${i}`}
-                className="absolute h-full border-l border-white border-opacity-40"
+                className="absolute h-full border-l border-dashed border-red-500 border-opacity-30"
                 style={{ left: `${(i + 1) * 20}%`, top: 0, bottom: 0 }}
               />
             ))}
@@ -179,16 +179,16 @@ const PreviewMap = ({
 
           {/* Lignes centrales (plus visibles) */}
           <div
-            className="absolute top-1/2 w-full border-t border-white border-opacity-60"
-            style={{ transform: "translateY(-0.5px)" }}
+            className="absolute top-1/2 w-full border-t-2 border-dashed border-red-500 border-opacity-40"
+            style={{ transform: "translateY(-1px)" }}
           />
           <div
-            className="absolute left-1/2 h-full border-l border-white border-opacity-60"
-            style={{ transform: "translateX(-0.5px)" }}
+            className="absolute left-1/2 h-full border-l-2 border-dashed border-red-500 border-opacity-40"
+            style={{ transform: "translateX(-1px)" }}
           />
 
           {/* Point central */}
-          <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-red-500 rounded-full transform -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute top-1/2 left-1/2 w-4 h-4 bg-red-500 bg-opacity-60 rounded-full transform -translate-x-1/2 -translate-y-1/2" />
         </div>
       )}
     </div>
