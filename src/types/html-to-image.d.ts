@@ -9,7 +9,6 @@ declare module "html-to-image" {
     skipFonts?: boolean;
     pixelRatio?: number;
     cacheBust?: boolean;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: unknown;
   }
 
