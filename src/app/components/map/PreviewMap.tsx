@@ -84,7 +84,12 @@ const PreviewMap = ({
             : mapStyle,
         center: validCenter,
         zoom: validZoom,
+        bearing: 0,
+        pitch: 0,
+        fadeDuration: 0,
       });
+
+      map.current.jumpTo({ center: validCenter, zoom: validZoom });
     } catch (e) {
       console.error("Erreur lors de la création de la carte:", e);
       return;
