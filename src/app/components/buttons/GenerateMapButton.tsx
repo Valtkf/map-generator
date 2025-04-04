@@ -197,6 +197,53 @@ const GenerateMapButton = ({
               },
               filter: ["==", "$type", "LineString"],
             });
+
+            // Ajouter des marqueurs au début et à la fin du tracé
+            const lineFeature = gpxGeoJson.features.find(
+              (feature) => feature.geometry.type === "LineString"
+            );
+
+            if (lineFeature && lineFeature.geometry.type === "LineString") {
+              const coordinates = lineFeature.geometry.coordinates as [
+                number,
+                number
+              ][];
+
+              if (coordinates.length >= 2) {
+                // Créer un élément DOM personnalisé pour le marqueur de départ
+                const startEl = document.createElement("div");
+                startEl.className = "custom-marker";
+                startEl.style.width = "24px"; // Taille plus grande pour l'export
+                startEl.style.height = "24px";
+                startEl.style.borderRadius = "50%";
+                startEl.style.backgroundColor = "white";
+                startEl.style.border = "4px solid black"; // Bordure plus épaisse pour l'export
+
+                // Créer un élément DOM personnalisé pour le marqueur d'arrivée
+                const endEl = document.createElement("div");
+                endEl.className = "custom-marker";
+                endEl.style.width = "24px";
+                endEl.style.height = "24px";
+                endEl.style.borderRadius = "50%";
+                endEl.style.backgroundColor = "white";
+                endEl.style.border = "4px solid black";
+
+                // Ajouter les marqueurs personnalisés
+                new mapboxgl.Marker({
+                  element: startEl,
+                  anchor: "center",
+                })
+                  .setLngLat(coordinates[0])
+                  .addTo(map);
+
+                new mapboxgl.Marker({
+                  element: endEl,
+                  anchor: "center",
+                })
+                  .setLngLat(coordinates[coordinates.length - 1])
+                  .addTo(map);
+              }
+            }
           }
 
           map.once("idle", async () => {

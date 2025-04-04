@@ -2,23 +2,11 @@ import React, { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAP_STYLES } from "../inputs/ColorSelector";
-
-// Définition du type GeoJSON
-type GeoJSON = {
-  type: "FeatureCollection";
-  features: Array<{
-    type: "Feature";
-    geometry: {
-      type: "LineString" | "Point" | "Polygon";
-      coordinates: number[][] | number[] | number[][][];
-    };
-    properties?: Record<string, unknown>;
-  }>;
-};
+import { GeoJson } from "../../utils/gpx";
 
 interface PreviewMapProps {
   backgroundColor: string;
-  gpxGeoJson: GeoJSON;
+  gpxGeoJson: GeoJson;
   center: [number, number];
   zoom: number;
   showGrid?: boolean;
@@ -35,6 +23,7 @@ const PreviewMap = ({
 }: PreviewMapProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -54,6 +43,10 @@ const PreviewMap = ({
 
     // Utiliser le style par défaut si aucun style n'est trouvé
     const mapStyle = style?.url || "mapbox://styles/mapbox/streets-v11";
+
+    // Nettoyer les marqueurs existants
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
 
     // Nettoyer la carte précédente avec vérification
     if (map.current) {
@@ -124,6 +117,55 @@ const PreviewMap = ({
             "line-width": 2,
           },
         });
+
+        // Ajouter des marqueurs au début et à la fin du tracé
+        const lineFeature = gpxGeoJson.features.find(
+          (feature) => feature.geometry.type === "LineString"
+        );
+
+        if (lineFeature && lineFeature.geometry.type === "LineString") {
+          const coordinates = lineFeature.geometry.coordinates as [
+            number,
+            number
+          ][];
+
+          if (coordinates.length >= 2) {
+            // Créer un élément DOM personnalisé pour le marqueur de départ
+            const startEl = document.createElement("div");
+            startEl.className = "custom-marker";
+            startEl.style.width = "12px";
+            startEl.style.height = "12px";
+            startEl.style.borderRadius = "50%";
+            startEl.style.backgroundColor = "white";
+            startEl.style.border = "2px solid black";
+
+            // Créer un élément DOM personnalisé pour le marqueur d'arrivée
+            const endEl = document.createElement("div");
+            endEl.className = "custom-marker";
+            endEl.style.width = "12px";
+            endEl.style.height = "12px";
+            endEl.style.borderRadius = "50%";
+            endEl.style.backgroundColor = "white";
+            endEl.style.border = "2px solid black";
+
+            // Ajouter les marqueurs personnalisés
+            const startMarker = new mapboxgl.Marker({
+              element: startEl,
+              anchor: "center",
+            })
+              .setLngLat(coordinates[0])
+              .addTo(map.current);
+
+            const endMarker = new mapboxgl.Marker({
+              element: endEl,
+              anchor: "center",
+            })
+              .setLngLat(coordinates[coordinates.length - 1])
+              .addTo(map.current);
+
+            markersRef.current = [startMarker, endMarker];
+          }
+        }
       }
     });
 
@@ -177,7 +219,7 @@ const PreviewMap = ({
             ))}
           </div>
 
-          {/* Lignes centrales (plus visibles) */}
+          {/* Lignes centrales */}
           <div
             className="absolute top-1/2 w-full border-t-2 border-dashed border-red-500 border-opacity-40"
             style={{ transform: "translateY(-1px)" }}
