@@ -106,6 +106,27 @@ const GenerateMapButton = ({
     return new Promise<{ svgContent: string; styleName: string }>(
       (resolve, reject) => {
         try {
+          // Calculer l'ajustement de zoom basé sur le rapport des tailles
+          // PreviewMap: 400x610px, Image générée: 3508x4961px
+          const previewWidth = 400;
+          const previewHeight = 610;
+          const exportWidth = 3508;
+          const exportHeight = 4961;
+
+          // Calculer le rapport de taille
+          const widthRatio = exportWidth / previewWidth;
+          const heightRatio = exportHeight / previewHeight;
+          const sizeRatio = Math.max(widthRatio, heightRatio);
+
+          // Ajuster le zoom en fonction du rapport logarithmique
+          // Chaque niveau de zoom x2 = zoom+1, donc log2(ratio) donne le nombre de niveaux à ajuster
+          const zoomOffset = Math.log2(sizeRatio);
+          const adjustedZoom = zoom + zoomOffset;
+
+          console.log(
+            `Zoom original: ${zoom}, Offset: ${zoomOffset}, Zoom ajusté: ${adjustedZoom}`
+          );
+
           const map = new mapboxgl.Map({
             container: mapContainer,
             style:
@@ -125,12 +146,17 @@ const GenerateMapButton = ({
                   }
                 : styleUrl,
             center: center,
-            zoom: zoom,
+            zoom: adjustedZoom,
             preserveDrawingBuffer: true,
             interactive: false,
             attributionControl: false,
             logoPosition: "bottom-right",
+            bearing: 0,
+            pitch: 0,
+            fadeDuration: 0,
           });
+
+          map.jumpTo({ center, zoom: adjustedZoom });
 
           // Gérer les images manquantes
           map.on("styleimagemissing", (e) => {
