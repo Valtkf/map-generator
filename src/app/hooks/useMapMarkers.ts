@@ -10,11 +10,6 @@ interface MarkerConfig {
 export const useMapMarkers = (isExport = false) => {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
 
-  const clearMarkers = useCallback(() => {
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = [];
-  }, []);
-
   const createMarkerElement = useCallback(
     ({ size, borderWidth }: MarkerConfig) => {
       const el = document.createElement("div");
@@ -37,9 +32,15 @@ export const useMapMarkers = (isExport = false) => {
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
 
-      const config = isExport
+      const configSource = isExport
         ? MAP_CONFIG.MARKERS.EXPORT
         : MAP_CONFIG.MARKERS.PREVIEW;
+
+      // Convertir la config au bon format
+      const config: MarkerConfig = {
+        size: configSource.SIZE,
+        borderWidth: configSource.BORDER,
+      };
 
       if (coordinates.length >= 2) {
         const startEl = createMarkerElement(config);
@@ -64,6 +65,11 @@ export const useMapMarkers = (isExport = false) => {
     },
     [isExport, createMarkerElement]
   );
+
+  const clearMarkers = useCallback(() => {
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
+  }, []);
 
   return { addRouteMarkers, clearMarkers };
 };
