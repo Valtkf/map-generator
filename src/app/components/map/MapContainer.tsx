@@ -1,5 +1,4 @@
 import React from "react";
-import { MAP_CONFIG } from "../../constants/map";
 
 interface MapContainerProps {
   backgroundColor?: string;
