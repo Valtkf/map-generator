@@ -186,7 +186,7 @@ const GenerateMapButton = ({
               data: mapboxGeoJson,
             });
 
-            // Ajouter la couche de ligne pour le tracé avec la bonne couleur
+            // Ajouter la couche de ligne pour le tracé
             map.addLayer({
               id: "gpx-track-line",
               type: "line",
@@ -199,188 +199,171 @@ const GenerateMapButton = ({
                 "line-color": traceColor,
                 "line-width": 8,
               },
-              filter: ["==", "$type", "LineString"],
             });
 
-            // Ajouter des marqueurs au début et à la fin du tracé
+            // Ajouter les points de début et fin
             const lineFeature = gpxGeoJson.features.find(
               (feature) => feature.geometry.type === "LineString"
             );
 
             if (lineFeature && lineFeature.geometry.type === "LineString") {
-              const coordinates = lineFeature.geometry.coordinates as [
-                number,
-                number
-              ][];
+              const coordinates = lineFeature.geometry.coordinates;
 
-              if (coordinates.length >= 2) {
-                // Créer un élément DOM personnalisé pour le marqueur de départ
-                const startEl = document.createElement("div");
-                startEl.className = "custom-marker";
-                startEl.style.width = "24px";
-                startEl.style.height = "24px";
-                startEl.style.borderRadius = "50%";
-                startEl.style.backgroundColor = "white";
-                startEl.style.border = `4px solid ${traceColor}`;
+              // Créer une source pour les points
+              map.addSource("route-points", {
+                type: "geojson",
+                data: {
+                  type: "FeatureCollection",
+                  features: [
+                    {
+                      type: "Feature",
+                      geometry: {
+                        type: "Point",
+                        coordinates: coordinates[0],
+                      },
+                      properties: {},
+                    },
+                    {
+                      type: "Feature",
+                      geometry: {
+                        type: "Point",
+                        coordinates: coordinates[coordinates.length - 1],
+                      },
+                      properties: {},
+                    },
+                  ],
+                },
+              });
 
-                // Créer un élément DOM personnalisé pour le marqueur d'arrivée
-                const endEl = document.createElement("div");
-                endEl.className = "custom-marker";
-                endEl.style.width = "24px";
-                endEl.style.height = "24px";
-                endEl.style.borderRadius = "50%";
-                endEl.style.backgroundColor = "white";
-                endEl.style.border = `4px solid ${traceColor}`;
-
-                // Ajouter les marqueurs personnalisés
-                new mapboxgl.Marker({
-                  element: startEl,
-                  anchor: "center",
-                })
-                  .setLngLat(coordinates[0])
-                  .addTo(map);
-
-                new mapboxgl.Marker({
-                  element: endEl,
-                  anchor: "center",
-                })
-                  .setLngLat(coordinates[coordinates.length - 1])
-                  .addTo(map);
-              }
+              // Ajouter une couche pour les cercles blancs (plus grands)
+              map.addLayer({
+                id: "route-points-bg",
+                type: "circle",
+                source: "route-points",
+                paint: {
+                  "circle-radius": 13 * 3,
+                  "circle-color": "white",
+                  "circle-stroke-color": traceColor,
+                  "circle-stroke-width": 6 * 3,
+                },
+              });
             }
           }
 
-          map.once("idle", async () => {
-            try {
-              // Rendre le conteneur visible temporairement
-              mapContainer.style.visibility = "visible";
-
-              // Attendre un peu pour s'assurer que tout est rendu
-              await new Promise((r) => setTimeout(r, 1000));
-
-              // Capturer directement le canvas de la carte
-              const canvas = map.getCanvas();
-
-              // Réduire la taille
-              const compressedCanvas = document.createElement("canvas");
-              const ctx = compressedCanvas.getContext("2d");
-              const scaleFactor = 0.7;
-
-              compressedCanvas.width = canvas.width * scaleFactor;
-              compressedCanvas.height = canvas.height * scaleFactor;
-
-              if (ctx) {
-                ctx.drawImage(
-                  canvas,
-                  0,
-                  0,
-                  compressedCanvas.width,
-                  compressedCanvas.height
-                );
+          map.once("style.load", () => {
+            // Simplifier la carte en supprimant les couches non essentielles
+            const layersToRemove = [
+              "poi-label",
+              "transit-label",
+              "natural-point-label",
+              "natural-line-label",
+            ];
+            layersToRemove.forEach((layer) => {
+              if (map.getLayer(layer)) {
+                map.removeLayer(layer);
               }
+            });
 
-              // Générer le contenu selon le format sélectionné
-              let fileContent: string | Blob;
-              let fileName: string;
-
-              if (exportFormat === "svg") {
-                // Utiliser PNG pour l'image dans le SVG
-                const dataUrl = compressedCanvas.toDataURL("image/png");
-
-                // Créer un SVG compatible avec Illustrator
-                const svgContent = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="3508" height="4961" viewBox="0 0 3508 4961" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-  <image x="0" y="0" width="3508" height="4961" xlink:href="${dataUrl}"/>
-</svg>`;
-
-                fileContent = svgContent;
-                fileName = `carte-${styleName}-${
-                  new Date().toISOString().split("T")[0]
-                }.svg`;
-              } else if (exportFormat === "png") {
-                // Générer un PNG
-                const dataUrl = compressedCanvas.toDataURL("image/png");
-                const binaryString = atob(dataUrl.split(",")[1]);
-                const len = binaryString.length;
-                const bytes = new Uint8Array(len);
-                for (let i = 0; i < len; i++) {
-                  bytes[i] = binaryString.charCodeAt(i);
-                }
-
-                fileContent = new Blob([bytes], { type: "image/png" });
-                fileName = `carte-${styleName}-${
-                  new Date().toISOString().split("T")[0]
-                }.png`;
-              } else {
-                // jpeg
-                // Générer un JPEG avec meilleure compression
-                const dataUrl = compressedCanvas.toDataURL("image/jpeg", 0.85);
-                const binaryString = atob(dataUrl.split(",")[1]);
-                const len = binaryString.length;
-                const bytes = new Uint8Array(len);
-                for (let i = 0; i < len; i++) {
-                  bytes[i] = binaryString.charCodeAt(i);
-                }
-
-                fileContent = new Blob([bytes], { type: "image/jpeg" });
-                fileName = `carte-${styleName}-${
-                  new Date().toISOString().split("T")[0]
-                }.jpg`;
+            // Pour le style trace-only, pas besoin de modifications supplémentaires
+            if (styleId !== "trace-only") {
+              // Rendre toutes les routes en noir pour le style minimaliste
+              if (styleId === "minimaliste") {
+                const roadLayers = [
+                  "road",
+                  "road-secondary-tertiary",
+                  "road-primary",
+                  "road-motorway-trunk",
+                ];
+                roadLayers.forEach((layer) => {
+                  if (map.getLayer(layer)) {
+                    map.setPaintProperty(layer, "line-color", "#000000");
+                  }
+                });
               }
-
-              // Nettoyer
-              map.remove();
-              document.body.removeChild(mapContainer);
-
-              // Retourner le contenu et le nom du fichier
-              resolve({
-                content: fileContent,
-                fileName: fileName,
-                styleName: styleName,
-              });
-            } catch (error) {
-              console.error(
-                `Erreur lors de la génération de la carte ${styleName}:`,
-                error
-              );
-              map.remove();
-              document.body.removeChild(mapContainer);
-              reject(error);
             }
           });
         });
 
-        map.once("style.load", () => {
-          // Simplifier la carte en supprimant les couches non essentielles
-          const layersToRemove = [
-            "poi-label",
-            "transit-label",
-            "natural-point-label",
-            "natural-line-label",
-          ];
-          layersToRemove.forEach((layer) => {
-            if (map.getLayer(layer)) {
-              map.removeLayer(layer);
-            }
-          });
+        // Attendre que tout soit chargé
+        map.once("idle", async () => {
+          try {
+            // Attendre un peu pour s'assurer que tout est rendu
+            await new Promise((resolve) => setTimeout(resolve, 1000));
 
-          // Pour le style trace-only, pas besoin de modifications supplémentaires
-          if (styleId !== "trace-only") {
-            // Rendre toutes les routes en noir pour le style minimaliste
-            if (styleId === "minimaliste") {
-              const roadLayers = [
-                "road",
-                "road-secondary-tertiary",
-                "road-primary",
-                "road-motorway-trunk",
-              ];
-              roadLayers.forEach((layer) => {
-                if (map.getLayer(layer)) {
-                  map.setPaintProperty(layer, "line-color", "#000000");
-                }
-              });
+            // Rendre le conteneur visible temporairement
+            mapContainer.style.visibility = "visible";
+
+            // Capturer le canvas
+            const canvas = map.getCanvas();
+
+            // Réduire la taille
+            const compressedCanvas = document.createElement("canvas");
+            const ctx = compressedCanvas.getContext("2d");
+            const scaleFactor = 0.7;
+
+            compressedCanvas.width = canvas.width * scaleFactor;
+            compressedCanvas.height = canvas.height * scaleFactor;
+
+            if (ctx) {
+              ctx.drawImage(
+                canvas,
+                0,
+                0,
+                compressedCanvas.width,
+                compressedCanvas.height
+              );
             }
+
+            // Générer le contenu selon le format sélectionné
+            let fileContent: string | Blob;
+            let fileName: string;
+
+            if (exportFormat === "svg") {
+              const dataUrl = compressedCanvas.toDataURL("image/png");
+              fileContent = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+                <svg width="3508" height="4961" xmlns="http://www.w3.org/2000/svg">
+                  <image href="${dataUrl}" width="3508" height="4961"/>
+                </svg>`;
+              fileName = `carte-${styleName}-${
+                new Date().toISOString().split("T")[0]
+              }.svg`;
+            } else if (exportFormat === "png") {
+              const dataUrl = compressedCanvas.toDataURL("image/png");
+              const binaryString = atob(dataUrl.split(",")[1]);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+              }
+              fileContent = new Blob([bytes], { type: "image/png" });
+              fileName = `carte-${styleName}-${
+                new Date().toISOString().split("T")[0]
+              }.png`;
+            } else {
+              const dataUrl = compressedCanvas.toDataURL("image/jpeg", 0.85);
+              const binaryString = atob(dataUrl.split(",")[1]);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+              }
+              fileContent = new Blob([bytes], { type: "image/jpeg" });
+              fileName = `carte-${styleName}-${
+                new Date().toISOString().split("T")[0]
+              }.jpg`;
+            }
+
+            // Nettoyer
+            map.remove();
+            document.body.removeChild(mapContainer);
+
+            // Retourner le contenu
+            resolve({
+              content: fileContent,
+              fileName: fileName,
+              styleName: styleName,
+            });
+          } catch (error) {
+            console.error("Erreur lors de la génération de la carte:", error);
+            reject(error);
           }
         });
       } catch (error) {
