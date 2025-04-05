@@ -3,6 +3,7 @@ import mapboxgl, { Style } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAP_STYLES } from "../inputs/ColorSelector";
 import { GeoJson } from "../../utils/gpx";
+import { FeatureCollection, Geometry } from "geojson";
 
 interface PreviewMapProps {
   backgroundColor: string;
@@ -20,7 +21,7 @@ interface CustomStyle extends Omit<Style, "version" | "sources" | "layers"> {
   sources: Record<string, never>;
   layers: Array<{
     id: string;
-    type: string;
+    type: "background";
     paint: {
       "background-color": string;
     };
@@ -28,6 +29,14 @@ interface CustomStyle extends Omit<Style, "version" | "sources" | "layers"> {
 }
 
 const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
+  const {
+    center,
+    zoom,
+    selectedStyle,
+    backgroundColor,
+    gpxGeoJson,
+    onMapLoad,
+  } = props;
   const mapContainer = useRef<HTMLDivElement>(null);
   const markers = useRef<mapboxgl.Marker[]>([]);
   const mapInstance = useRef<mapboxgl.Map | null>(null);
@@ -54,17 +63,102 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
     (mapboxgl as { accessToken: string }).accessToken = token;
 
-    const style = MAP_STYLES.find((s) => s.id === props.selectedStyle);
+    // Fonction pour ajouter le tracé GPX
+    const addGpxLayer = (map: mapboxgl.Map) => {
+      if (!gpxGeoJson?.features?.length) return;
+      try {
+        if (map.getSource("route")) {
+          map.removeLayer("route");
+          map.removeSource("route");
+        }
+
+        const style = MAP_STYLES.find((s) => s.id === selectedStyle);
+        const traceColor = style?.traceColor || "#000000";
+
+        map.addSource("route", {
+          type: "geojson",
+          data: gpxGeoJson as FeatureCollection<Geometry>,
+        });
+
+        map.addLayer({
+          id: "route",
+          type: "line",
+          source: "route",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": traceColor,
+            "line-width": props.isExport ? 3 : 2,
+          },
+        });
+
+        // Ajouter des marqueurs au début et à la fin du tracé
+        const lineFeature = gpxGeoJson.features.find(
+          (feature) => feature.geometry.type === "LineString"
+        );
+
+        if (lineFeature && lineFeature.geometry.type === "LineString") {
+          const coordinates = lineFeature.geometry.coordinates as [
+            number,
+            number
+          ][];
+
+          if (coordinates.length >= 2) {
+            // Créer un élément DOM personnalisé pour le marqueur de départ
+            const startEl = document.createElement("div");
+            startEl.className = "custom-marker";
+            startEl.style.width = "12px";
+            startEl.style.height = "12px";
+            startEl.style.borderRadius = "50%";
+            startEl.style.backgroundColor = "white";
+            startEl.style.border = "2px solid black";
+
+            // Créer un élément DOM personnalisé pour le marqueur d'arrivée
+            const endEl = document.createElement("div");
+            endEl.className = "custom-marker";
+            endEl.style.width = "12px";
+            endEl.style.height = "12px";
+            endEl.style.borderRadius = "50%";
+            endEl.style.backgroundColor = "white";
+            endEl.style.border = "2px solid black";
+
+            // Ajouter les marqueurs personnalisés
+            const startMarker = new mapboxgl.Marker({
+              element: startEl,
+              anchor: "center",
+            })
+              .setLngLat(coordinates[0])
+              .addTo(map);
+
+            const endMarker = new mapboxgl.Marker({
+              element: endEl,
+              anchor: "center",
+            })
+              .setLngLat(coordinates[coordinates.length - 1])
+              .addTo(map);
+
+            markers.current = [startMarker, endMarker];
+          }
+        }
+      } catch (error) {
+        console.error("Erreur lors de l'ajout du tracé:", error);
+      }
+    };
+
+    const style = MAP_STYLES.find((s) => s.id === selectedStyle);
     const mapStyle =
-      props.selectedStyle === "trace-only"
-        ? createCustomStyle(props.backgroundColor)
+      selectedStyle === "trace-only"
+        ? createCustomStyle(backgroundColor)
         : style?.url || "mapbox://styles/mapbox/streets-v11";
 
     mapInstance.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: mapStyle,
-      center: props.center,
-      zoom: props.zoom,
+      style:
+        typeof mapStyle === "string" ? mapStyle : (mapStyle as mapboxgl.Style),
+      center,
+      zoom,
       bearing: 0,
       pitch: 0,
     });
@@ -78,8 +172,8 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
 
     mapInstance.current.on("load", () => {
       console.log("Carte chargée");
-      if (props.onMapLoad) {
-        props.onMapLoad();
+      if (onMapLoad) {
+        onMapLoad();
       }
       addGpxLayer(mapInstance.current!);
     });
@@ -95,127 +189,21 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
         }
       }
     };
-  }, []);
-
-  // Fonction pour ajouter le tracé GPX
-  const addGpxLayer = (map: mapboxgl.Map) => {
-    if (!props.gpxGeoJson?.features?.length) return;
-
-    try {
-      // Supprimer l'ancien tracé s'il existe
-      if (map.getSource("route")) {
-        map.removeLayer("route");
-        map.removeSource("route");
-      }
-
-      const style = MAP_STYLES.find((s) => s.id === props.selectedStyle);
-      const traceColor = style?.traceColor || "#000000";
-
-      map.addSource("route", {
-        type: "geojson",
-        data: props.gpxGeoJson,
-      });
-
-      map.addLayer({
-        id: "route",
-        type: "line",
-        source: "route",
-        layout: {
-          "line-join": "round",
-          "line-cap": "round",
-        },
-        paint: {
-          "line-color": traceColor,
-          "line-width": props.isExport ? 3 : 2,
-        },
-      });
-
-      // Ajouter des marqueurs au début et à la fin du tracé
-      const lineFeature = props.gpxGeoJson.features.find(
-        (feature) => feature.geometry.type === "LineString"
-      );
-
-      if (lineFeature && lineFeature.geometry.type === "LineString") {
-        const coordinates = lineFeature.geometry.coordinates as [
-          number,
-          number
-        ][];
-
-        if (coordinates.length >= 2) {
-          // Créer un élément DOM personnalisé pour le marqueur de départ
-          const startEl = document.createElement("div");
-          startEl.className = "custom-marker";
-          startEl.style.width = "12px";
-          startEl.style.height = "12px";
-          startEl.style.borderRadius = "50%";
-          startEl.style.backgroundColor = "white";
-          startEl.style.border = "2px solid black";
-
-          // Créer un élément DOM personnalisé pour le marqueur d'arrivée
-          const endEl = document.createElement("div");
-          endEl.className = "custom-marker";
-          endEl.style.width = "12px";
-          endEl.style.height = "12px";
-          endEl.style.borderRadius = "50%";
-          endEl.style.backgroundColor = "white";
-          endEl.style.border = "2px solid black";
-
-          // Ajouter les marqueurs personnalisés
-          const startMarker = new mapboxgl.Marker({
-            element: startEl,
-            anchor: "center",
-          })
-            .setLngLat(coordinates[0])
-            .addTo(map);
-
-          const endMarker = new mapboxgl.Marker({
-            element: endEl,
-            anchor: "center",
-          })
-            .setLngLat(coordinates[coordinates.length - 1])
-            .addTo(map);
-
-          markers.current = [startMarker, endMarker];
-        }
-      }
-    } catch (error) {
-      console.error("Erreur lors de l'ajout du tracé:", error);
-    }
-  };
-
-  // Mettre à jour la carte
-  useEffect(() => {
-    if (!mapInstance.current) return;
-
-    const map = mapInstance.current;
-    const style = MAP_STYLES.find((s) => s.id === props.selectedStyle);
-    const mapStyle =
-      props.selectedStyle === "trace-only"
-        ? createCustomStyle(props.backgroundColor)
-        : style?.url || "mapbox://styles/mapbox/streets-v11";
-
-    map.setStyle(mapStyle);
-    map.setCenter(props.center);
-    map.setZoom(props.zoom);
-
-    map.once("style.load", () => {
-      addGpxLayer(map);
-    });
   }, [
-    props.center,
-    props.zoom,
-    props.selectedStyle,
-    props.gpxGeoJson,
-    props.backgroundColor,
+    center,
+    zoom,
+    selectedStyle,
+    backgroundColor,
+    ref,
+    onMapLoad,
+    gpxGeoJson,
   ]);
 
   return (
     <div
       style={{
         backgroundColor:
-          props.selectedStyle === "trace-only"
-            ? props.backgroundColor
-            : undefined,
+          selectedStyle === "trace-only" ? backgroundColor : undefined,
       }}
       className="ml-20 relative w-[400px] h-[610px] md:h-[610px] border border-gray-300"
     >

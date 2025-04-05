@@ -1,15 +1,6 @@
-// Définition du type GeoJSON
-export type GeoJson = {
-  type: "FeatureCollection";
-  features: Array<{
-    type: "Feature";
-    geometry: {
-      type: "LineString" | "Point" | "Polygon";
-      coordinates: number[][] | number[] | number[][][];
-    };
-    properties?: Record<string, unknown>;
-  }>;
-};
+import { FeatureCollection, Geometry } from "geojson";
+
+export type GeoJson = FeatureCollection<Geometry>;
 
 export const parseGpxFile = async (file: File): Promise<GeoJson> => {
   try {
