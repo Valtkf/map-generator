@@ -56,7 +56,7 @@ const GenerateMapButton = ({
           const { content, fileName, styleName } = await generateMapForStyle(
             mapStyle.id,
             mapStyle.name,
-            mapStyle.url
+            mapStyle.url || "mapbox://styles/mapbox/streets-v11"
           );
           return { content, fileName, styleName };
         })
