@@ -12,6 +12,17 @@ interface RouteLayerProps {
   isMapReady: boolean;
 }
 
+const createCustomMarker = (color: string) => {
+  const el = document.createElement("div");
+  el.className = "custom-marker";
+  el.style.width = "12px";
+  el.style.height = "12px";
+  el.style.borderRadius = "50%";
+  el.style.backgroundColor = "white";
+  el.style.border = `2px solid ${color}`;
+  return el;
+};
+
 export const RouteLayer = ({
   map,
   gpxGeoJson,
@@ -56,6 +67,11 @@ export const RouteLayer = ({
         // Réinitialiser le compteur de tentatives
         retryCount.current = 0;
 
+        // Récupérer la couleur du style
+        const traceColor =
+          MAP_STYLES.find((s) => s.id === selectedStyle)?.traceColor ||
+          "#000000";
+
         // Ajouter le nouveau tracé
         map.addSource("route", {
           type: "geojson",
@@ -71,14 +87,12 @@ export const RouteLayer = ({
             "line-cap": "round",
           },
           paint: {
-            "line-color":
-              MAP_STYLES.find((s) => s.id === selectedStyle)?.traceColor ||
-              "#000000",
+            "line-color": traceColor,
             "line-width": isExport ? 3 : 2,
           },
         });
 
-        // Ajouter les marqueurs
+        // Ajouter les marqueurs personnalisés
         const lineFeature = gpxGeoJson.features.find(
           (feature): feature is Feature<LineString> =>
             feature.geometry.type === "LineString"
@@ -92,11 +106,17 @@ export const RouteLayer = ({
             number
           ];
 
-          const startMarker = new mapboxgl.Marker()
+          const startMarker = new mapboxgl.Marker({
+            element: createCustomMarker(traceColor),
+            scale: isExport ? 1.5 : 1,
+          })
             .setLngLat(startPoint)
             .addTo(map);
 
-          const endMarker = new mapboxgl.Marker()
+          const endMarker = new mapboxgl.Marker({
+            element: createCustomMarker(traceColor),
+            scale: isExport ? 1.5 : 1,
+          })
             .setLngLat(endPoint)
             .addTo(map);
 
