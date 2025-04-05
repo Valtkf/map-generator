@@ -176,13 +176,17 @@ const GenerateMapButton = ({
               features: gpxGeoJson.features,
             };
 
+            // Trouver la couleur du style
+            const style = MAP_STYLES.find((s) => s.id === styleId);
+            const traceColor = style?.traceColor || "#000000";
+
             // Ajouter la source avec le format correct
             map.addSource("gpx-track", {
               type: "geojson",
               data: mapboxGeoJson,
             });
 
-            // Ajouter la couche de ligne pour le tracé
+            // Ajouter la couche de ligne pour le tracé avec la bonne couleur
             map.addLayer({
               id: "gpx-track-line",
               type: "line",
@@ -192,7 +196,7 @@ const GenerateMapButton = ({
                 "line-cap": "round",
               },
               paint: {
-                "line-color": "#000000",
+                "line-color": traceColor,
                 "line-width": 8,
               },
               filter: ["==", "$type", "LineString"],
@@ -213,11 +217,11 @@ const GenerateMapButton = ({
                 // Créer un élément DOM personnalisé pour le marqueur de départ
                 const startEl = document.createElement("div");
                 startEl.className = "custom-marker";
-                startEl.style.width = "24px"; // Taille plus grande pour l'export
+                startEl.style.width = "24px";
                 startEl.style.height = "24px";
                 startEl.style.borderRadius = "50%";
                 startEl.style.backgroundColor = "white";
-                startEl.style.border = "4px solid black"; // Bordure plus épaisse pour l'export
+                startEl.style.border = `4px solid ${traceColor}`;
 
                 // Créer un élément DOM personnalisé pour le marqueur d'arrivée
                 const endEl = document.createElement("div");
@@ -226,7 +230,7 @@ const GenerateMapButton = ({
                 endEl.style.height = "24px";
                 endEl.style.borderRadius = "50%";
                 endEl.style.backgroundColor = "white";
-                endEl.style.border = "4px solid black";
+                endEl.style.border = `4px solid ${traceColor}`;
 
                 // Ajouter les marqueurs personnalisés
                 new mapboxgl.Marker({
