@@ -90,7 +90,11 @@ export const generateMapboxExportUrl = ({
         (feature) => feature.geometry.type === "LineString"
       );
 
-      if (lineFeature && lineFeature.geometry.coordinates.length > 0) {
+      if (
+        lineFeature &&
+        lineFeature.geometry.type === "LineString" &&
+        lineFeature.geometry.coordinates.length > 0
+      ) {
         const coordinates = lineFeature.geometry.coordinates as [
           number,
           number
