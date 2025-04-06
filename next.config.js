@@ -2,9 +2,6 @@
 const nextConfig = {
   // Autres configurations existantes...
 
-  // Optimisation des polices
-  optimizeFonts: false,
-
   // Si vous avez besoin de précharger des polices spécifiques
   async headers() {
     return [
@@ -13,7 +10,7 @@ const nextConfig = {
         headers: [
           {
             key: "Link",
-            value: "", // Supprime les préchargements automatiques
+            value: "",
           },
         ],
       },

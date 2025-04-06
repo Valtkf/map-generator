@@ -50,7 +50,11 @@ export async function POST(req: NextRequest) {
 
       console.log("LineFeature trouvé:", !!lineFeature);
 
-      if (lineFeature && lineFeature.geometry.coordinates.length > 0) {
+      if (
+        lineFeature &&
+        lineFeature.geometry.type === "LineString" &&
+        lineFeature.geometry.coordinates.length > 0
+      ) {
         console.log(
           "Nombre de coordonnées:",
           lineFeature.geometry.coordinates.length
