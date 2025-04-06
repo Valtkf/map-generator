@@ -1,4 +1,5 @@
 import { ExportFormat } from "../components/inputs/FormatSelector";
+import { MAP_STYLES } from "../components/inputs/ColorSelector";
 
 interface ExportResult {
   content: string | Blob;
@@ -10,7 +11,57 @@ export const generateMapExport = async (
   format: ExportFormat,
   styleName: string
 ): Promise<ExportResult> => {
-  const compressedCanvas = await compressCanvas(canvas);
+  // Trouver la couleur du tracé correspondant au style
+  const style = MAP_STYLES.find((s) => s.id === styleName);
+  const traceColor = style?.traceColor || "#000000";
+
+  // Créer un canvas temporaire pour modifier la couleur du tracé
+  const tempCanvas = document.createElement("canvas");
+  const ctx = tempCanvas.getContext("2d");
+  tempCanvas.width = canvas.width;
+  tempCanvas.height = canvas.height;
+
+  if (ctx) {
+    // Dessiner l'image originale
+    ctx.drawImage(canvas, 0, 0);
+
+    // Modifier la couleur du tracé
+    const imageData = ctx.getImageData(
+      0,
+      0,
+      tempCanvas.width,
+      tempCanvas.height
+    );
+    const data = imageData.data;
+
+    // Parcourir tous les pixels et changer la couleur du tracé
+    for (let i = 0; i < data.length; i += 4) {
+      // Si le pixel est proche du noir (tracé)
+      // On vérifie que les composantes RGB sont toutes très sombres
+      const isTracePixel =
+        data[i] < 30 && // Rouge
+        data[i + 1] < 30 && // Vert
+        data[i + 2] < 30 && // Bleu
+        data[i + 3] > 200; // Alpha (opacité)
+
+      if (isTracePixel) {
+        // Convertir la couleur hex en RGB
+        const r = parseInt(traceColor.slice(1, 3), 16);
+        const g = parseInt(traceColor.slice(3, 5), 16);
+        const b = parseInt(traceColor.slice(5, 7), 16);
+
+        // Appliquer la nouvelle couleur
+        data[i] = r; // Rouge
+        data[i + 1] = g; // Vert
+        data[i + 2] = b; // Bleu
+        // Garder l'alpha tel quel
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  const compressedCanvas = await compressCanvas(tempCanvas);
 
   switch (format) {
     case "svg":

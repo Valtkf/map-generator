@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 interface CitySearchProps {
   onCitySelect: (center: [number, number]) => void;
@@ -8,6 +8,11 @@ const CitySearch = ({ onCitySelect }: CitySearchProps) => {
   const [cityName, setCityName] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleSearch = async () => {
     if (!cityName.trim()) return;
@@ -16,7 +21,6 @@ const CitySearch = ({ onCitySelect }: CitySearchProps) => {
     setError(null);
 
     try {
-      // Utiliser l'API Mapbox Geocoding pour rechercher la ville
       const accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
@@ -27,11 +31,9 @@ const CitySearch = ({ onCitySelect }: CitySearchProps) => {
       const data = await response.json();
 
       if (data.features && data.features.length > 0) {
-        // Récupérer les coordonnées de la première correspondance
         const [lng, lat] = data.features[0].center;
         onCitySelect([lng, lat]);
 
-        // Afficher le nom complet de la ville trouvée
         const placeName = data.features[0].place_name;
         console.log(`Ville trouvée: ${placeName}`);
       } else {
@@ -44,6 +46,10 @@ const CitySearch = ({ onCitySelect }: CitySearchProps) => {
       setIsSearching(false);
     }
   };
+
+  if (!isClient) {
+    return null;
+  }
 
   return (
     <div className="mb-6">
