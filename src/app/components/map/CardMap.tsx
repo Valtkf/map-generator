@@ -11,9 +11,15 @@ interface CardMapProps {
   gpxGeoJson: GeoJson | null;
   center: [number, number];
   zoom: number;
+  lineWidth: number;
 }
 
-export const CardMap = ({ gpxGeoJson, center, zoom }: CardMapProps) => {
+export const CardMap = ({
+  gpxGeoJson,
+  center,
+  zoom,
+  lineWidth,
+}: CardMapProps) => {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>("png");
   const [selectedStyle, setSelectedStyle] = useState("vintage");
@@ -79,6 +85,7 @@ export const CardMap = ({ gpxGeoJson, center, zoom }: CardMapProps) => {
         zoom={zoom}
         selectedStyle={selectedStyle}
         isExport={true}
+        lineWidth={lineWidth}
       />
       <select
         value={selectedFormat}
