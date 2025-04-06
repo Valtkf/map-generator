@@ -9,6 +9,7 @@ import { MapControls } from "./map/MapControls";
 import { GeoJson, calculateBounds } from "../utils/gpx";
 import CitySearch from "./inputs/CitySearch";
 import FormatSelector, { ExportFormat } from "./inputs/FormatSelector";
+import LineWidthSelector from "./inputs/LineWidthSelector";
 
 // Types
 interface MapState {
@@ -30,6 +31,7 @@ const CardMap = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedStyle, setSelectedStyle] = useState<string>("minimaliste");
   const [exportFormat, setExportFormat] = useState<ExportFormat>("svg");
+  const [lineWidth, setLineWidth] = useState(2);
 
   // Gestionnaires d'événements
   const handleGpxFile = useCallback((parsedGeoJson: GeoJson) => {
@@ -130,6 +132,7 @@ const CardMap = () => {
               zoom={zoom}
               showGrid={showGrid}
               selectedStyle={selectedStyle}
+              lineWidth={lineWidth}
             />
 
             {/* Contrôles de carte superposés */}
@@ -155,6 +158,10 @@ const CardMap = () => {
               selectedStyle={selectedStyle}
               setSelectedStyle={setSelectedStyle}
             />
+            <LineWidthSelector
+              lineWidth={lineWidth}
+              setLineWidth={setLineWidth}
+            />
           </div>
 
           <div className="bg-gray-50 p-6 rounded-lg shadow-sm mb-6">
@@ -172,6 +179,7 @@ const CardMap = () => {
               isLoading={isGenerating}
               backgroundColor={backgroundColor}
               exportFormat={exportFormat}
+              lineWidth={lineWidth}
             />
           </div>
         </div>

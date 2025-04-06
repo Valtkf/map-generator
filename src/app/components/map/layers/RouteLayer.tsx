@@ -10,16 +10,23 @@ interface RouteLayerProps {
   selectedStyle: string;
   isExport: boolean;
   isMapReady: boolean;
+  lineWidth: number;
 }
 
-const createCustomMarker = (color: string) => {
+const createCustomMarker = (
+  color: string,
+  isExport: boolean,
+  lineWidth: number
+) => {
   const el = document.createElement("div");
   el.className = "custom-marker";
-  el.style.width = "12px";
-  el.style.height = "12px";
+  el.style.width = "13px";
+  el.style.height = "13px";
   el.style.borderRadius = "50%";
   el.style.backgroundColor = "white";
-  el.style.border = `2px solid ${color}`;
+  el.style.border = `${
+    isExport ? lineWidth * 4.77 * 0.75 : lineWidth * 0.75
+  }px solid ${color}`;
   return el;
 };
 
@@ -29,6 +36,7 @@ export const RouteLayer = ({
   selectedStyle,
   isExport,
   isMapReady,
+  lineWidth,
 }: RouteLayerProps) => {
   const markers = useRef<mapboxgl.Marker[]>([]);
   const retryCount = useRef(0);
@@ -37,21 +45,27 @@ export const RouteLayer = ({
   useEffect(() => {
     if (!gpxGeoJson?.features?.length || !map || !isMapReady) return;
 
+    const removeExistingLayers = () => {
+      try {
+        if (map.getLayer("route")) {
+          map.removeLayer("route");
+        }
+        if (map.getSource("route")) {
+          map.removeSource("route");
+        }
+      } catch {
+        // Ignorer silencieusement les erreurs de suppression
+      }
+    };
+
     const addRoute = () => {
       try {
         // Nettoyer les marqueurs existants
         markers.current.forEach((marker) => marker.remove());
         markers.current = [];
 
-        // Supprimer l'ancien tracé s'il existe
-        try {
-          if (map.getSource("route")) {
-            map.removeLayer("route");
-            map.removeSource("route");
-          }
-        } catch {
-          // Ignorer les erreurs de source non trouvée
-        }
+        // Supprimer l'ancien tracé
+        removeExistingLayers();
 
         // Vérifier si la carte est prête
         if (!map.isStyleLoaded()) {
@@ -88,7 +102,7 @@ export const RouteLayer = ({
           },
           paint: {
             "line-color": traceColor,
-            "line-width": isExport ? 3 : 2,
+            "line-width": isExport ? lineWidth * 4.77 : lineWidth,
           },
         });
 
@@ -107,15 +121,15 @@ export const RouteLayer = ({
           ];
 
           const startMarker = new mapboxgl.Marker({
-            element: createCustomMarker(traceColor),
-            scale: isExport ? 1.5 : 1,
+            element: createCustomMarker(traceColor, isExport, lineWidth),
+            scale: 1,
           })
             .setLngLat(startPoint)
             .addTo(map);
 
           const endMarker = new mapboxgl.Marker({
-            element: createCustomMarker(traceColor),
-            scale: isExport ? 1.5 : 1,
+            element: createCustomMarker(traceColor, isExport, lineWidth),
+            scale: 1,
           })
             .setLngLat(endPoint)
             .addTo(map);
@@ -143,16 +157,9 @@ export const RouteLayer = ({
     return () => {
       map.off("style.load", waitForStyle);
       markers.current.forEach((marker) => marker.remove());
-      try {
-        if (map.getSource("route")) {
-          map.removeLayer("route");
-          map.removeSource("route");
-        }
-      } catch {
-        // Ignorer les erreurs de nettoyage
-      }
+      removeExistingLayers();
     };
-  }, [map, gpxGeoJson, selectedStyle, isExport, isMapReady]);
+  }, [map, gpxGeoJson, selectedStyle, isExport, isMapReady, lineWidth]);
 
   return null;
 };

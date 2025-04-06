@@ -17,6 +17,7 @@ interface PreviewMapProps {
   selectedStyle: string;
   isExport?: boolean;
   onMapLoad?: () => void;
+  lineWidth: number;
 }
 // Type pour le style personnalisé
 
@@ -30,6 +31,7 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
     onMapLoad,
     showGrid = false,
     isExport = false,
+    lineWidth,
   } = props;
 
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -114,6 +116,7 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
           selectedStyle={selectedStyle}
           isExport={isExport}
           isMapReady={isMapReady.current}
+          lineWidth={lineWidth}
         />
       )}
     </div>

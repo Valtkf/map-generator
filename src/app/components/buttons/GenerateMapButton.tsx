@@ -14,6 +14,7 @@ interface GenerateMapButtonProps {
   onClick: () => void;
   backgroundColor: string;
   exportFormat: ExportFormat;
+  lineWidth: number;
 }
 
 // Définir un type pour le GeoJSON de Mapbox
@@ -30,6 +31,7 @@ const GenerateMapButton = ({
   onClick,
   backgroundColor,
   exportFormat,
+  lineWidth,
 }: GenerateMapButtonProps) => {
   const handleGenerateMap = async () => {
     // Appeler la fonction onClick pour toute logique supplémentaire
@@ -197,7 +199,7 @@ const GenerateMapButton = ({
               },
               paint: {
                 "line-color": traceColor,
-                "line-width": 8,
+                "line-width": lineWidth * 4.77,
               },
             });
 
@@ -241,10 +243,10 @@ const GenerateMapButton = ({
                 type: "circle",
                 source: "route-points",
                 paint: {
-                  "circle-radius": 13 * 3,
+                  "circle-radius": 13,
                   "circle-color": "white",
                   "circle-stroke-color": traceColor,
-                  "circle-stroke-width": 6 * 3,
+                  "circle-stroke-width": lineWidth * 4.77 * 0.75,
                 },
               });
             }
