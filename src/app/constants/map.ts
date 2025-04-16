@@ -1,7 +1,7 @@
 export const MAP_CONFIG = {
   PREVIEW: {
-    WIDTH: 400,
-    HEIGHT: 610,
+    WIDTH: 600,
+    HEIGHT: 849,
   },
   EXPORT: {
     WIDTH: 3508,
