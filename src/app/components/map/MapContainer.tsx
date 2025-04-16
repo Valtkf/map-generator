@@ -10,14 +10,24 @@ export const MapContainer = ({
   backgroundColor,
   selectedStyle,
   children,
-}: MapContainerProps) => (
-  <div
-    style={{
-      backgroundColor:
-        selectedStyle === "trace-only" ? backgroundColor : undefined,
-    }}
-    className="ml-20 relative w-[400px] h-[610px] md:h-[610px] border border-gray-300"
-  >
-    {children}
-  </div>
-);
+}: MapContainerProps) => {
+  // Dimensions A3 : 297mm × 420mm
+  // Réduisons à une largeur de 600px tout en gardant le ratio
+  const previewWidth = 600;
+  const ratio = 420 / 297; // ≈ 1.414
+  const previewHeight = Math.round(previewWidth * ratio); // ≈ 849px
+
+  return (
+    <div
+      style={{
+        backgroundColor:
+          selectedStyle === "trace-only" ? backgroundColor : undefined,
+        width: `${previewWidth}px`,
+        height: `${previewHeight}px`,
+      }}
+      className="ml-20 relative border border-gray-300"
+    >
+      {children}
+    </div>
+  );
+};
