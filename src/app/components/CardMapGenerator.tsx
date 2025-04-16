@@ -105,7 +105,7 @@ const CardMap = () => {
         Générateur de carte
       </h1>
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col lg:flex-row gap-20">
         {/* Panneau de gauche: Prévisualisation */}
         <div className="lg:w-1/2 flex flex-col items-center">
           <div className="w-full flex justify-between items-center mb-4">

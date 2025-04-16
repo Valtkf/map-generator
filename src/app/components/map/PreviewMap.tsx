@@ -105,7 +105,7 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
         backgroundColor:
           selectedStyle === "trace-only" ? backgroundColor : undefined,
       }}
-      className="ml-20 relative w-[400px] h-[610px] md:h-[610px] border border-gray-300"
+      className="ml-20 relative w-[550px] h-[778px] md:h-[778px] border border-gray-300"
     >
       <div ref={mapContainer} className="w-full h-full" />
       <MapGrid visible={showGrid} />
