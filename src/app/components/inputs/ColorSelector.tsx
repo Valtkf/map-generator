@@ -13,7 +13,7 @@ export const MAP_STYLES: MapStyle[] = [
     id: "vintage",
     name: "Vintage",
     url: "mapbox://styles/pyr25/cm91uzik8000f01sfb70d7qu7",
-    traceColor: "#da9887",
+    traceColor: "#aa654c",
   },
   {
     id: "azure",
