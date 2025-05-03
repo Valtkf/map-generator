@@ -243,7 +243,7 @@ const GenerateMapButton = ({
                 type: "circle",
                 source: "route-points",
                 paint: {
-                  "circle-radius": 13,
+                  "circle-radius": 13 * Math.sqrt(exportWidth / previewWidth),
                   "circle-color": "white",
                   "circle-stroke-color": traceColor,
                   "circle-stroke-width": lineWidth * 4.77 * 0.75,
