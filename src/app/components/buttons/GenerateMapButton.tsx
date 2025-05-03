@@ -112,9 +112,9 @@ const GenerateMapButton = ({
     }>((resolve, reject) => {
       try {
         // Calculer l'ajustement de zoom basé sur le rapport des tailles
-        // PreviewMap: 400x610px, Image générée: 3508x4961px
-        const previewWidth = 400;
-        const previewHeight = 610;
+        // PreviewMap: 550x778px, Image générée: 3508x4961px
+        const previewWidth = 550;
+        const previewHeight = 778;
         const exportWidth = 3508;
         const exportHeight = 4961;
 

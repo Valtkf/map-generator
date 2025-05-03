@@ -44,33 +44,39 @@ const CardMap = () => {
     }));
   }, []);
 
-  const handleMove = useCallback(
-    (direction: "up" | "down" | "left" | "right") => {
-      const step = 0.01;
-      setMapState((prev) => {
-        const [lng, lat] = prev.center;
-        let newCenter: [number, number] = [lng, lat];
+  const handleMove = (direction: "up" | "down" | "left" | "right") => {
+    console.log(`handleMove called with direction: ${direction}`);
+    console.log(`Current mapState:`, mapState);
 
-        switch (direction) {
-          case "up":
-            newCenter = [lng, lat + step];
-            break;
-          case "down":
-            newCenter = [lng, lat - step];
-            break;
-          case "left":
-            newCenter = [lng - step, lat];
-            break;
-          case "right":
-            newCenter = [lng + step, lat];
-            break;
-        }
+    // Ajustement du pas en fonction du zoom
+    // Plus le zoom est élevé, plus le pas est petit
+    const baseStep = 0.1;
+    const step = baseStep / Math.pow(1.5, mapState.zoom - 1);
+    console.log(`Calculated step: ${step}`);
 
-        return { ...prev, center: newCenter };
-      });
-    },
-    []
-  );
+    setMapState((prev) => {
+      const [lng, lat] = prev.center;
+      const newState = { ...prev };
+
+      switch (direction) {
+        case "up":
+          newState.center = [lng, Math.min(90, lat + step)];
+          break;
+        case "down":
+          newState.center = [lng, Math.max(-90, lat - step)];
+          break;
+        case "left":
+          newState.center = [Math.max(-180, lng - step), lat];
+          break;
+        case "right":
+          newState.center = [Math.min(180, lng + step), lat];
+          break;
+      }
+
+      console.log(`New mapState:`, newState);
+      return newState;
+    });
+  };
 
   const handleZoomChange = useCallback((newZoom: number) => {
     setMapState((prev) => ({
