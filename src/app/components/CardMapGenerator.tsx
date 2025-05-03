@@ -5,7 +5,7 @@ import FileUpload from "./inputs/FileUpload";
 import ColorSelector from "./inputs/ColorSelector";
 import GenerateMapButton from "./buttons/GenerateMapButton";
 import PreviewMap from "./map/PreviewMap";
-import { MapControls } from "./map/MapControls";
+import { MapControls } from "./map/controls/MapControls";
 import { GeoJson, calculateBounds } from "../utils/gpx";
 import CitySearch from "./inputs/CitySearch";
 import FormatSelector, { ExportFormat } from "./inputs/FormatSelector";
@@ -72,11 +72,11 @@ const CardMap = () => {
     []
   );
 
-  const handleZoom = useCallback((type: "in" | "out") => {
-    setMapState((prev) => {
-      const newZoom = type === "in" ? prev.zoom + 0.5 : prev.zoom - 0.5;
-      return { ...prev, zoom: Math.max(1, Math.min(20, newZoom)) };
-    });
+  const handleZoomChange = useCallback((newZoom: number) => {
+    setMapState((prev) => ({
+      ...prev,
+      zoom: Math.max(1, Math.min(20, newZoom)),
+    }));
   }, []);
 
   const handleBackgroundChange = useCallback((color: string) => {
@@ -137,7 +137,11 @@ const CardMap = () => {
 
             {/* Contrôles de carte superposés */}
             <div className="absolute bottom-4 right-4 bg-white bg-opacity-80 p-2 rounded-lg shadow-md">
-              <MapControls onMove={handleMove} onZoom={handleZoom} />
+              <MapControls
+                onMove={handleMove}
+                zoom={zoom}
+                onZoomChange={handleZoomChange}
+              />
             </div>
           </div>
         </div>

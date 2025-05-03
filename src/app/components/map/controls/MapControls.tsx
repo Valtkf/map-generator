@@ -2,10 +2,15 @@ import React from "react";
 
 interface MapControlsProps {
   onMove: (direction: "up" | "down" | "left" | "right") => void;
-  onZoom: (type: "in" | "out") => void;
+  zoom: number;
+  onZoomChange: (zoom: number) => void;
 }
 
-export const MapControls: React.FC<MapControlsProps> = ({ onMove, onZoom }) => {
+export const MapControls: React.FC<MapControlsProps> = ({
+  onMove,
+  zoom,
+  onZoomChange,
+}) => {
   return (
     <div className="flex gap-4 mb-4">
       {/* Contrôles directionnels */}
@@ -48,22 +53,19 @@ export const MapControls: React.FC<MapControlsProps> = ({ onMove, onZoom }) => {
         </div>
       </div>
 
-      {/* Contrôles de zoom */}
-      <div className="flex flex-col gap-1">
-        <button
-          onClick={() => onZoom("in")}
-          className="cursor-pointer w-10 h-10 flex items-center justify-center border rounded hover:bg-gray-100 text-lg font-bold"
-          aria-label="Zoomer"
-        >
-          +
-        </button>
-        <button
-          onClick={() => onZoom("out")}
-          className="cursor-pointer w-10 h-10 flex items-center justify-center border rounded hover:bg-gray-100 text-lg font-bold"
-          aria-label="Dézoomer"
-        >
-          -
-        </button>
+      {/* Contrôle de zoom avec slider */}
+      <div className="flex flex-col gap-1 items-center">
+        <input
+          type="range"
+          min="1"
+          max="20"
+          step="0.1"
+          value={zoom}
+          onChange={(e) => onZoomChange(parseFloat(e.target.value))}
+          className="w-24 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+          aria-label="Niveau de zoom"
+        />
+        <div className="text-xs text-gray-600">{zoom.toFixed(1)}x</div>
       </div>
     </div>
   );
