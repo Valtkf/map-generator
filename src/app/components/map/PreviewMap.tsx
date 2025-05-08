@@ -113,7 +113,7 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
       }}
       className="ml-20 relative w-[550px] h-[778px] md:h-[778px] border border-gray-300"
     >
-      <div ref={mapContainer} className="w-full h-[calc(100%-200px)]" />
+      <div ref={mapContainer} className="w-full h-full" />
       <MapGrid visible={showGrid} />
       {mapInstance.current && (
         <RouteLayer
@@ -126,7 +126,7 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
         />
       )}
       {elevationData && (
-        <div className="absolute bottom-0 left-0 right-0 h-[200px]">
+        <div className="absolute bottom-0 left-0 right-0 h-[100px] pointer-events-none">
           <ElevationProfile gpxData={elevationData} isMinimal={true} />
         </div>
       )}
