@@ -20,7 +20,7 @@ export const parseGpxFile = async (file: File): Promise<GeoJson> => {
       throw new Error("Aucun segment de trace trouvé dans le fichier GPX");
     }
 
-    const routePoints: [number, number][] = [];
+    const routePoints: [number, number, number][] = [];
 
     for (let i = 0; i < trackSegments.length; i++) {
       const trackPoints = trackSegments[i].getElementsByTagName("trkpt");
@@ -34,10 +34,13 @@ export const parseGpxFile = async (file: File): Promise<GeoJson> => {
         const point = trackPoints[j];
         const lon = parseFloat(point.getAttribute("lon") || "0");
         const lat = parseFloat(point.getAttribute("lat") || "0");
+        const ele = parseFloat(
+          point.getElementsByTagName("ele")[0]?.textContent || "0"
+        );
 
         // Vérifier que les coordonnées sont valides
         if (!isNaN(lon) && !isNaN(lat)) {
-          routePoints.push([lon, lat]);
+          routePoints.push([lon, lat, ele]);
         }
       }
     }

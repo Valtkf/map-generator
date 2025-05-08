@@ -17,6 +17,10 @@ interface MapState {
   zoom: number;
   backgroundColor: string;
   geoJson: GeoJson | null;
+  elevationData: {
+    elevation: number[];
+    distance: number[];
+  } | null;
 }
 
 const CardMap = () => {
@@ -26,6 +30,7 @@ const CardMap = () => {
     zoom: 1,
     backgroundColor: "#FFFFFF",
     geoJson: null,
+    elevationData: null,
   });
   const [showGrid, setShowGrid] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -33,14 +38,69 @@ const CardMap = () => {
   const [exportFormat, setExportFormat] = useState<ExportFormat>("svg");
   const [lineWidth, setLineWidth] = useState(2);
 
+  // Fonction pour calculer la distance entre deux points
+  const calculateDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ) => {
+    const R = 6371e3; // Rayon de la Terre en mètres
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // Distance en mètres
+  };
+
   // Gestionnaires d'événements
   const handleGpxFile = useCallback((parsedGeoJson: GeoJson) => {
     const { center, zoom } = calculateBounds(parsedGeoJson);
+
+    // Extraction des données d'élévation et calcul des distances
+    const elevationData = {
+      elevation: [] as number[],
+      distance: [] as number[],
+    };
+
+    let totalDistance = 0;
+    let prevLat = 0;
+    let prevLon = 0;
+    let isFirstPoint = true;
+
+    parsedGeoJson.features.forEach((feature) => {
+      if (feature.geometry.type === "LineString") {
+        feature.geometry.coordinates.forEach((coord) => {
+          const [lon, lat, ele] = coord;
+
+          if (isFirstPoint) {
+            prevLat = lat;
+            prevLon = lon;
+            isFirstPoint = false;
+          } else {
+            totalDistance += calculateDistance(prevLat, prevLon, lat, lon);
+            prevLat = lat;
+            prevLon = lon;
+          }
+
+          elevationData.elevation.push(ele);
+          elevationData.distance.push(totalDistance);
+        });
+      }
+    });
+
     setMapState((prev) => ({
       ...prev,
       geoJson: parsedGeoJson,
       center,
       zoom,
+      elevationData,
     }));
   }, []);
 
@@ -103,7 +163,7 @@ const CardMap = () => {
   }, []);
 
   // Extraction des valeurs
-  const { center, zoom, backgroundColor, geoJson } = mapState;
+  const { center, zoom, backgroundColor, geoJson, elevationData } = mapState;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -139,6 +199,7 @@ const CardMap = () => {
               showGrid={showGrid}
               selectedStyle={selectedStyle}
               lineWidth={lineWidth}
+              elevationData={elevationData}
             />
 
             {/* Contrôles de carte superposés */}
@@ -187,9 +248,9 @@ const CardMap = () => {
               zoom={zoom}
               gpxGeoJson={geoJson}
               isLoading={isGenerating}
-              backgroundColor={backgroundColor}
               exportFormat={exportFormat}
               lineWidth={lineWidth}
+              elevationData={elevationData}
             />
           </div>
         </div>

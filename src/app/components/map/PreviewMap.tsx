@@ -7,6 +7,7 @@ import { GeoJson } from "../../utils/gpx";
 import { useMapStyle } from "../../hooks/map/useMapStyle";
 import { MapGrid } from "./grid/MapGrid";
 import { RouteLayer } from "./layers/RouteLayer";
+import { ElevationProfile } from "./ElevationProfile";
 
 interface PreviewMapProps {
   backgroundColor: string;
@@ -18,6 +19,10 @@ interface PreviewMapProps {
   isExport?: boolean;
   onMapLoad?: () => void;
   lineWidth: number;
+  elevationData?: {
+    elevation: number[];
+    distance: number[];
+  } | null;
 }
 // Type pour le style personnalisé
 
@@ -32,6 +37,7 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
     showGrid = false,
     isExport = false,
     lineWidth,
+    elevationData,
   } = props;
 
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -107,7 +113,7 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
       }}
       className="ml-20 relative w-[550px] h-[778px] md:h-[778px] border border-gray-300"
     >
-      <div ref={mapContainer} className="w-full h-full" />
+      <div ref={mapContainer} className="w-full h-[calc(100%-200px)]" />
       <MapGrid visible={showGrid} />
       {mapInstance.current && (
         <RouteLayer
@@ -118,6 +124,11 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
           isMapReady={isMapReady.current}
           lineWidth={lineWidth}
         />
+      )}
+      {elevationData && (
+        <div className="absolute bottom-0 left-0 right-0 h-[200px]">
+          <ElevationProfile gpxData={elevationData} isMinimal={true} />
+        </div>
       )}
     </div>
   );
