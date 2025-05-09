@@ -16,11 +16,13 @@ interface ElevationProfileProps {
     distance: number[];
   };
   isMinimal?: boolean;
+  traceColor?: string;
 }
 
 export const ElevationProfile: React.FC<ElevationProfileProps> = ({
   gpxData,
   isMinimal = false,
+  traceColor,
 }) => {
   const options = {
     responsive: true,
@@ -49,13 +51,18 @@ export const ElevationProfile: React.FC<ElevationProfileProps> = ({
     },
   };
 
+  const color = traceColor || "rgb(75, 192, 192)";
+  const bgColor = traceColor
+    ? color.replace("rgb", "rgba").replace(")", ", 0.5)")
+    : "rgba(75, 192, 192, 0.5)";
+
   const data = {
     labels: gpxData.distance.map((d) => (d / 1000).toFixed(1)),
     datasets: [
       {
         data: gpxData.elevation,
-        borderColor: "rgb(75, 192, 192)",
-        backgroundColor: "rgba(75, 192, 192, 0.5)",
+        borderColor: color,
+        backgroundColor: bgColor,
         tension: 0.4,
         pointRadius: isMinimal ? 0 : 3,
       },

@@ -259,11 +259,13 @@ const GenerateMapButton = ({
               0,
               0,
               exportWidth,
-              exportHeight - profileExportHeight
+              exportHeight // On dessine la carte sur toute la hauteur
             );
 
             // Si nous avons des données d'élévation, dessiner le profil
             if (elevationData) {
+              // (Suppression du fond : ne pas remplir la zone du profil)
+
               // Créer un canvas temporaire pour le profil
               const profileCanvas = document.createElement("canvas");
               profileCanvas.width = exportWidth;
@@ -276,39 +278,57 @@ const GenerateMapButton = ({
                 );
               }
 
-              // Ne pas remplir de fond blanc, laisser le fond transparent
+              // Vérifier que nous avons des données d'élévation valides
+              const validElevations = elevationData.elevation.filter(
+                (e) => typeof e === "number" && !isNaN(e)
+              );
 
-              // Dessiner la ligne du profil
-              profileCtx.strokeStyle = "rgb(75, 192, 192)";
-              profileCtx.lineWidth = 2;
-              profileCtx.beginPath();
+              if (validElevations.length >= 2) {
+                // Dessiner la ligne du profil
+                const traceColor =
+                  MAP_STYLES.find((s) => s.id === styleId)?.traceColor ||
+                  "#000000";
+                profileCtx.strokeStyle = traceColor;
+                profileCtx.lineWidth = 8;
+                profileCtx.beginPath();
 
-              const maxElevation = Math.max(...elevationData.elevation);
-              const minElevation = Math.min(...elevationData.elevation);
-              const elevationRange = maxElevation - minElevation;
-              const padding = 20;
+                const maxElevation = Math.max(...validElevations);
+                const minElevation = Math.min(...validElevations);
+                const elevationRange = maxElevation - minElevation;
+                const padding = 20;
 
-              elevationData.elevation.forEach((elevation, index) => {
-                const x =
-                  (index / (elevationData.elevation.length - 1)) *
-                    (exportWidth - 2 * padding) +
-                  padding;
-                const y =
-                  profileExportHeight -
-                  padding -
-                  ((elevation - minElevation) / elevationRange) *
-                    (profileExportHeight - 2 * padding);
-
-                if (index === 0) {
-                  profileCtx.moveTo(x, y);
+                if (elevationRange === 0) {
+                  // Toutes les altitudes sont identiques : dessiner une ligne plate au centre
+                  profileCtx.beginPath();
+                  profileCtx.moveTo(padding, profileExportHeight / 2);
+                  profileCtx.lineTo(
+                    exportWidth - padding,
+                    profileExportHeight / 2
+                  );
+                  profileCtx.stroke();
                 } else {
-                  profileCtx.lineTo(x, y);
+                  elevationData.elevation.forEach((elevation, index) => {
+                    const x =
+                      (index / (elevationData.elevation.length - 1)) *
+                        (exportWidth - 2 * padding) +
+                      padding;
+                    const y =
+                      profileExportHeight -
+                      padding -
+                      ((elevation - minElevation) / elevationRange) *
+                        (profileExportHeight - 2 * padding);
+
+                    if (index === 0) {
+                      profileCtx.moveTo(x, y);
+                    } else {
+                      profileCtx.lineTo(x, y);
+                    }
+                  });
+                  profileCtx.stroke();
                 }
-              });
+              }
 
-              profileCtx.stroke();
-
-              // Dessiner le profil sur le canvas principal
+              // Dessiner le profil sur le canvas principal (dans la bande noire)
               ctx.drawImage(
                 profileCanvas,
                 0,
