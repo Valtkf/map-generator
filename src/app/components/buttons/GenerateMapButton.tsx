@@ -118,13 +118,12 @@ const GenerateMapButton = ({
         // Calculer l'ajustement de zoom basé sur le rapport des tailles
         // PreviewMap: 550x778px, Image générée: 3508x4961px
         const previewWidth = 550;
-        const profilePreviewHeight = 100;
         const previewHeight = 778;
         const exportWidth = 3508;
         const exportHeight = 4961;
-        // Calcul dynamique de la hauteur du profil exporté
+        // Hauteur du profil altimétrique : 40px (comme la preview) * ratio d'export
         const profileExportHeight = Math.round(
-          profilePreviewHeight * (exportWidth / previewWidth)
+          40 * (exportWidth / previewWidth)
         );
 
         // Calculer le rapport de taille
@@ -262,13 +261,19 @@ const GenerateMapButton = ({
               exportHeight // On dessine la carte sur toute la hauteur
             );
 
+            // --- MODIF: Profil altimétrique exporté ---
+            // Largeur et hauteur du profil (70% de la largeur, 40px de haut)
+            const profileExportWidth = Math.round(exportWidth * 0.7);
+            const profileExportX = Math.round(
+              (exportWidth - profileExportWidth) / 2
+            );
+            const profileExportY = exportHeight - profileExportHeight;
+            // ... existing code ...
             // Si nous avons des données d'élévation, dessiner le profil
             if (elevationData) {
-              // (Suppression du fond : ne pas remplir la zone du profil)
-
               // Créer un canvas temporaire pour le profil
               const profileCanvas = document.createElement("canvas");
-              profileCanvas.width = exportWidth;
+              profileCanvas.width = profileExportWidth;
               profileCanvas.height = profileExportHeight;
               const profileCtx = profileCanvas.getContext("2d");
 
@@ -289,20 +294,20 @@ const GenerateMapButton = ({
                   MAP_STYLES.find((s) => s.id === styleId)?.traceColor ||
                   "#000000";
                 profileCtx.strokeStyle = traceColor;
-                profileCtx.lineWidth = 8;
+                profileCtx.lineWidth = 12;
                 profileCtx.beginPath();
 
                 const maxElevation = Math.max(...validElevations);
                 const minElevation = Math.min(...validElevations);
                 const elevationRange = maxElevation - minElevation;
-                const padding = 20;
+                const padding = 20 * (profileExportWidth / exportWidth); // Adapter le padding à la largeur du profil
 
                 if (elevationRange === 0) {
                   // Toutes les altitudes sont identiques : dessiner une ligne plate au centre
                   profileCtx.beginPath();
                   profileCtx.moveTo(padding, profileExportHeight / 2);
                   profileCtx.lineTo(
-                    exportWidth - padding,
+                    profileExportWidth - padding,
                     profileExportHeight / 2
                   );
                   profileCtx.stroke();
@@ -310,7 +315,7 @@ const GenerateMapButton = ({
                   elevationData.elevation.forEach((elevation, index) => {
                     const x =
                       (index / (elevationData.elevation.length - 1)) *
-                        (exportWidth - 2 * padding) +
+                        (profileExportWidth - 2 * padding) +
                       padding;
                     const y =
                       profileExportHeight -
@@ -328,12 +333,12 @@ const GenerateMapButton = ({
                 }
               }
 
-              // Dessiner le profil sur le canvas principal (dans la bande noire)
+              // Dessiner le profil sur le canvas principal (centré en bas)
               ctx.drawImage(
                 profileCanvas,
-                0,
-                exportHeight - profileExportHeight,
-                exportWidth,
+                profileExportX,
+                profileExportY,
+                profileExportWidth,
                 profileExportHeight
               );
             }

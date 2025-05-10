@@ -71,9 +71,19 @@ export const ElevationProfile: React.FC<ElevationProfileProps> = ({
 
   return (
     <div
-      className={`w-full ${
-        isMinimal ? "h-full" : "h-32 mt-4 p-4"
-      } rounded-lg shadow`}
+      className={`w-full h-full ${
+        isMinimal ? "" : "h-32 mt-4 p-4 rounded-lg shadow"
+      }`}
+      style={
+        isMinimal
+          ? {
+              background: "transparent",
+              boxShadow: "none",
+              padding: 0,
+              borderRadius: 0,
+            }
+          : {}
+      }
     >
       <Line options={options} data={data} />
     </div>
