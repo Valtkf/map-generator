@@ -39,8 +39,6 @@ export const RouteLayer = ({
   lineWidth,
 }: RouteLayerProps) => {
   const markers = useRef<mapboxgl.Marker[]>([]);
-  const retryCount = useRef(0);
-  const maxRetries = 3;
 
   useEffect(() => {
     if (!gpxGeoJson?.features?.length || !map || !isMapReady) return;
@@ -66,20 +64,6 @@ export const RouteLayer = ({
 
         // Supprimer l'ancien tracé
         removeExistingLayers();
-
-        // Vérifier si la carte est prête
-        if (!map.isStyleLoaded()) {
-          if (retryCount.current < maxRetries) {
-            retryCount.current++;
-            setTimeout(addRoute, 100);
-            return;
-          }
-          console.warn("Style non chargé après plusieurs tentatives");
-          return;
-        }
-
-        // Réinitialiser le compteur de tentatives
-        retryCount.current = 0;
 
         // Récupérer la couleur du style
         const traceColor =
@@ -154,7 +138,15 @@ export const RouteLayer = ({
     map.on("style.load", waitForStyle);
     waitForStyle();
 
+    // Ajouter un délai pour s'assurer que le style est bien chargé
+    const timeoutId = setTimeout(() => {
+      if (map.isStyleLoaded()) {
+        addRoute();
+      }
+    }, 1000);
+
     return () => {
+      clearTimeout(timeoutId);
       map.off("style.load", waitForStyle);
       markers.current.forEach((marker) => marker.remove());
       removeExistingLayers();

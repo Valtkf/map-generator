@@ -7,6 +7,8 @@ import { GeoJson } from "../../utils/gpx";
 import { useMapStyle } from "../../hooks/map/useMapStyle";
 import { MapGrid } from "./grid/MapGrid";
 import { RouteLayer } from "./layers/RouteLayer";
+import { ElevationProfile } from "./ElevationProfile";
+import { MAP_STYLES } from "../inputs/ColorSelector";
 
 interface PreviewMapProps {
   backgroundColor: string;
@@ -18,6 +20,10 @@ interface PreviewMapProps {
   isExport?: boolean;
   onMapLoad?: () => void;
   lineWidth: number;
+  elevationData?: {
+    elevation: number[];
+    distance: number[];
+  } | null;
 }
 // Type pour le style personnalisé
 
@@ -32,6 +38,7 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
     showGrid = false,
     isExport = false,
     lineWidth,
+    elevationData,
   } = props;
 
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -118,6 +125,17 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
           isMapReady={isMapReady.current}
           lineWidth={lineWidth}
         />
+      )}
+      {elevationData && (
+        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 h-[40px] w-[70%] pointer-events-none flex justify-center items-end">
+          <ElevationProfile
+            gpxData={elevationData}
+            isMinimal={true}
+            traceColor={
+              MAP_STYLES.find((s) => s.id === selectedStyle)?.traceColor
+            }
+          />
+        </div>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 import React from "react";
 import { GeoJson } from "../../utils/gpx";
-import mapboxgl from "mapbox-gl";
+import mapboxgl, { Style as MapboxStyle } from "mapbox-gl";
 import { MAP_STYLES } from "../inputs/ColorSelector";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
@@ -12,15 +12,12 @@ interface GenerateMapButtonProps {
   gpxGeoJson: GeoJson | null;
   isLoading?: boolean;
   onClick: () => void;
-  backgroundColor: string;
   exportFormat: ExportFormat;
   lineWidth: number;
-}
-
-// Définir un type pour le GeoJSON de Mapbox
-interface MapboxGeoJSON {
-  type: "FeatureCollection";
-  features: Array<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  elevationData?: {
+    elevation: number[];
+    distance: number[];
+  } | null;
 }
 
 const GenerateMapButton = ({
@@ -29,9 +26,9 @@ const GenerateMapButton = ({
   gpxGeoJson,
   isLoading = false,
   onClick,
-  backgroundColor,
   exportFormat,
   lineWidth,
+  elevationData,
 }: GenerateMapButtonProps) => {
   const handleGenerateMap = async () => {
     // Appeler la fonction onClick pour toute logique supplémentaire
@@ -86,27 +83,34 @@ const GenerateMapButton = ({
     }
   };
 
+  const createCustomStyle = (backgroundColor: string): MapboxStyle => {
+    const version = 8 as const;
+    return {
+      version,
+      sources: {},
+      layers: [
+        {
+          id: "background",
+          type: "background",
+          paint: {
+            "background-color": backgroundColor,
+          },
+        },
+      ],
+    };
+  };
+
   const generateMapForStyle = async (
     styleId: string,
     styleName: string,
     styleUrl: string
-  ) => {
-    // Créer un conteneur temporaire pour la carte
-    const mapContainer = document.createElement("div");
-    mapContainer.style.width = "3508px";
-    mapContainer.style.height = "4961px";
-    mapContainer.style.position = "absolute";
-    mapContainer.style.left = "-9999px";
-    mapContainer.style.visibility = "hidden";
-    document.body.appendChild(mapContainer);
-
-    // Initialiser la carte Mapbox
-    mapboxgl.accessToken =
-      process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
-      "pk.eyJ1IjoicHlyMjUiLCJhIjoiY204dTAwazVrMDVhbDJrcXdveGpnZmI3aSJ9.ZV6Um_KXZL-SxHqpZPMWxQ";
-
+  ): Promise<{
+    content: Blob | string;
+    fileName: string;
+    styleName: string;
+  }> => {
     return new Promise<{
-      content: string | Blob;
+      content: Blob | string;
       fileName: string;
       styleName: string;
     }>((resolve, reject) => {
@@ -117,6 +121,10 @@ const GenerateMapButton = ({
         const previewHeight = 778;
         const exportWidth = 3508;
         const exportHeight = 4961;
+        // Hauteur du profil altimétrique : 40px (comme la preview) * ratio d'export
+        const profileExportHeight = Math.round(
+          40 * (exportWidth / previewWidth)
+        );
 
         // Calculer le rapport de taille
         const widthRatio = exportWidth / previewWidth;
@@ -128,196 +136,228 @@ const GenerateMapButton = ({
         const zoomOffset = Math.log2(sizeRatio);
         const adjustedZoom = zoom + zoomOffset;
 
-        console.log(
-          `Zoom original: ${zoom}, Offset: ${zoomOffset}, Zoom ajusté: ${adjustedZoom}`
-        );
+        // Créer un conteneur pour la carte
+        const mapContainer = document.createElement("div");
+        mapContainer.style.width = "3508px";
+        mapContainer.style.height = "4961px";
+        mapContainer.style.position = "absolute";
+        mapContainer.style.left = "-9999px";
+        document.body.appendChild(mapContainer);
 
+        // Déterminer le style à utiliser pour la carte
+        let styleToUse: string | MapboxStyle = styleUrl;
+        if (styleId === "trace-only") {
+          styleToUse = createCustomStyle("#FFFFFF");
+        }
+
+        // Créer la carte
         const map = new mapboxgl.Map({
           container: mapContainer,
-          style:
-            styleId === "trace-only"
-              ? {
-                  version: 8,
-                  sources: {},
-                  layers: [
-                    {
-                      id: "background",
-                      type: "background",
-                      paint: {
-                        "background-color": backgroundColor || "#FFFFFF",
-                      },
-                    },
-                  ],
-                }
-              : styleUrl,
-          center: center,
+          style: styleToUse,
+          center,
           zoom: adjustedZoom,
-          preserveDrawingBuffer: true,
-          interactive: false,
-          attributionControl: false,
-          logoPosition: "bottom-right",
           bearing: 0,
           pitch: 0,
-          fadeDuration: 0,
+          interactive: false,
         });
 
-        map.jumpTo({ center, zoom: adjustedZoom });
-
-        // Gérer les images manquantes
-        map.on("styleimagemissing", (e) => {
-          const emptyImage = new ImageData(1, 1);
-          map.addImage(e.id, emptyImage);
-        });
-
-        map.on("load", () => {
-          // Ajouter le tracé GPX si disponible
-          if (gpxGeoJson && gpxGeoJson.features.length > 0) {
-            // Convertir GeoJson en GeoJSON compatible avec Mapbox
-            const mapboxGeoJson: MapboxGeoJSON = {
-              type: "FeatureCollection",
-              features: gpxGeoJson.features,
-            };
-
-            // Trouver la couleur du style
-            const style = MAP_STYLES.find((s) => s.id === styleId);
-            const traceColor = style?.traceColor || "#000000";
-
-            // Ajouter la source avec le format correct
-            map.addSource("gpx-track", {
-              type: "geojson",
-              data: mapboxGeoJson,
-            });
-
-            // Ajouter la couche de ligne pour le tracé
-            map.addLayer({
-              id: "gpx-track-line",
-              type: "line",
-              source: "gpx-track",
-              layout: {
-                "line-join": "round",
-                "line-cap": "round",
-              },
-              paint: {
-                "line-color": traceColor,
-                "line-width": lineWidth * 4.77,
-              },
-            });
-
-            // Ajouter les points de début et fin
-            const lineFeature = gpxGeoJson.features.find(
-              (feature) => feature.geometry.type === "LineString"
-            );
-
-            if (lineFeature && lineFeature.geometry.type === "LineString") {
-              const coordinates = lineFeature.geometry.coordinates;
-
-              // Créer une source pour les points
-              map.addSource("route-points", {
+        // Attendre que la carte soit chargée
+        map.once("idle", async () => {
+          try {
+            // Ajouter le tracé GPX
+            if (gpxGeoJson) {
+              map.addSource("route", {
                 type: "geojson",
-                data: {
-                  type: "FeatureCollection",
-                  features: [
-                    {
-                      type: "Feature",
-                      geometry: {
-                        type: "Point",
-                        coordinates: coordinates[0],
-                      },
-                      properties: {},
-                    },
-                    {
-                      type: "Feature",
-                      geometry: {
-                        type: "Point",
-                        coordinates: coordinates[coordinates.length - 1],
-                      },
-                      properties: {},
-                    },
-                  ],
-                },
+                data: gpxGeoJson,
               });
 
-              // Ajouter une couche pour les cercles blancs (plus grands)
               map.addLayer({
-                id: "route-points-bg",
-                type: "circle",
-                source: "route-points",
+                id: "route",
+                type: "line",
+                source: "route",
+                layout: {
+                  "line-join": "round",
+                  "line-cap": "round",
+                },
                 paint: {
-                  "circle-radius": 13 * Math.sqrt(exportWidth / previewWidth),
-                  "circle-color": "white",
-                  "circle-stroke-color": traceColor,
-                  "circle-stroke-width": lineWidth * 4.77 * 0.75,
+                  "line-color":
+                    MAP_STYLES.find((s) => s.id === styleId)?.traceColor ||
+                    "#000000",
+                  "line-width": lineWidth * 4.77,
                 },
               });
-            }
-          }
 
-          map.once("style.load", () => {
-            // Simplifier la carte en supprimant les couches non essentielles
-            const layersToRemove = [
-              "poi-label",
-              "transit-label",
-              "natural-point-label",
-              "natural-line-label",
-            ];
-            layersToRemove.forEach((layer) => {
-              if (map.getLayer(layer)) {
-                map.removeLayer(layer);
-              }
-            });
+              // Ajouter les points de début et fin
+              const lineFeature = gpxGeoJson.features.find(
+                (feature) => feature.geometry.type === "LineString"
+              );
 
-            // Pour le style trace-only, pas besoin de modifications supplémentaires
-            if (styleId !== "trace-only") {
-              // Rendre toutes les routes en noir pour le style minimaliste
-              if (styleId === "minimaliste") {
-                const roadLayers = [
-                  "road",
-                  "road-secondary-tertiary",
-                  "road-primary",
-                  "road-motorway-trunk",
-                ];
-                roadLayers.forEach((layer) => {
-                  if (map.getLayer(layer)) {
-                    map.setPaintProperty(layer, "line-color", "#000000");
-                  }
+              if (lineFeature && lineFeature.geometry.type === "LineString") {
+                const coordinates = lineFeature.geometry.coordinates;
+
+                // Créer une source pour les points
+                map.addSource("route-points", {
+                  type: "geojson",
+                  data: {
+                    type: "FeatureCollection",
+                    features: [
+                      {
+                        type: "Feature",
+                        geometry: {
+                          type: "Point",
+                          coordinates: coordinates[0],
+                        },
+                        properties: {},
+                      },
+                      {
+                        type: "Feature",
+                        geometry: {
+                          type: "Point",
+                          coordinates: coordinates[coordinates.length - 1],
+                        },
+                        properties: {},
+                      },
+                    ],
+                  },
+                });
+
+                // Ajouter une couche pour les cercles blancs
+                map.addLayer({
+                  id: "route-points-bg",
+                  type: "circle",
+                  source: "route-points",
+                  paint: {
+                    "circle-radius": 13 * Math.sqrt(exportWidth / previewWidth),
+                    "circle-color": "white",
+                    "circle-stroke-color":
+                      MAP_STYLES.find((s) => s.id === styleId)?.traceColor ||
+                      "#000000",
+                    "circle-stroke-width": lineWidth * 4.77 * 0.75,
+                  },
                 });
               }
             }
-          });
-        });
 
-        // Attendre que tout soit chargé
-        map.once("idle", async () => {
-          try {
-            // Attendre un peu pour s'assurer que tout est rendu
+            // Attendre que le tracé soit chargé
             await new Promise((resolve) => setTimeout(resolve, 1000));
 
-            // Rendre le conteneur visible temporairement
-            mapContainer.style.visibility = "visible";
+            // Créer un canvas pour la capture
+            const canvas = document.createElement("canvas");
+            canvas.width = 3508;
+            canvas.height = 4961;
+            const ctx = canvas.getContext("2d");
 
-            // Capturer le canvas
-            const canvas = map.getCanvas();
+            if (!ctx) {
+              throw new Error("Impossible de créer le contexte canvas");
+            }
 
-            // Réduire la taille
-            const compressedCanvas = document.createElement("canvas");
-            const ctx = compressedCanvas.getContext("2d");
-            const scaleFactor = 0.7;
+            // Capturer la carte
+            const mapCanvas = map.getCanvas();
+            ctx.drawImage(
+              mapCanvas,
+              0,
+              0,
+              exportWidth,
+              exportHeight // On dessine la carte sur toute la hauteur
+            );
 
-            compressedCanvas.width = canvas.width * scaleFactor;
-            compressedCanvas.height = canvas.height * scaleFactor;
+            // --- MODIF: Profil altimétrique exporté ---
+            // Largeur et hauteur du profil (70% de la largeur, 40px de haut)
+            const profileExportWidth = Math.round(exportWidth * 0.7);
+            const profileExportX = Math.round(
+              (exportWidth - profileExportWidth) / 2
+            );
+            const profileExportY = exportHeight - profileExportHeight;
+            // ... existing code ...
+            // Si nous avons des données d'élévation, dessiner le profil
+            if (elevationData) {
+              // Créer un canvas temporaire pour le profil
+              const profileCanvas = document.createElement("canvas");
+              profileCanvas.width = profileExportWidth;
+              profileCanvas.height = profileExportHeight;
+              const profileCtx = profileCanvas.getContext("2d");
 
-            if (ctx) {
+              if (!profileCtx) {
+                throw new Error(
+                  "Impossible de créer le contexte canvas pour le profil"
+                );
+              }
+
+              // Vérifier que nous avons des données d'élévation valides
+              const validElevations = elevationData.elevation.filter(
+                (e) => typeof e === "number" && !isNaN(e)
+              );
+
+              if (validElevations.length >= 2) {
+                // Dessiner la ligne du profil
+                const traceColor =
+                  MAP_STYLES.find((s) => s.id === styleId)?.traceColor ||
+                  "#000000";
+                profileCtx.strokeStyle = traceColor;
+                profileCtx.lineWidth = 12;
+                profileCtx.beginPath();
+
+                const maxElevation = Math.max(...validElevations);
+                const minElevation = Math.min(...validElevations);
+                const elevationRange = maxElevation - minElevation;
+                const padding = 20 * (profileExportWidth / exportWidth); // Adapter le padding à la largeur du profil
+
+                if (elevationRange === 0) {
+                  // Toutes les altitudes sont identiques : dessiner une ligne plate au centre
+                  profileCtx.beginPath();
+                  profileCtx.moveTo(padding, profileExportHeight / 2);
+                  profileCtx.lineTo(
+                    profileExportWidth - padding,
+                    profileExportHeight / 2
+                  );
+                  profileCtx.stroke();
+                } else {
+                  elevationData.elevation.forEach((elevation, index) => {
+                    const x =
+                      (index / (elevationData.elevation.length - 1)) *
+                        (profileExportWidth - 2 * padding) +
+                      padding;
+                    const y =
+                      profileExportHeight -
+                      padding -
+                      ((elevation - minElevation) / elevationRange) *
+                        (profileExportHeight - 2 * padding);
+
+                    if (index === 0) {
+                      profileCtx.moveTo(x, y);
+                    } else {
+                      profileCtx.lineTo(x, y);
+                    }
+                  });
+                  profileCtx.stroke();
+                }
+              }
+
+              // Dessiner le profil sur le canvas principal (centré en bas)
               ctx.drawImage(
-                canvas,
-                0,
-                0,
-                compressedCanvas.width,
-                compressedCanvas.height
+                profileCanvas,
+                profileExportX,
+                profileExportY,
+                profileExportWidth,
+                profileExportHeight
               );
             }
 
-            // Générer le contenu selon le format sélectionné
-            let fileContent: string | Blob;
+            // Compresser le canvas
+            const compressedCanvas = document.createElement("canvas");
+            compressedCanvas.width = 3508;
+            compressedCanvas.height = 4961;
+            const compressedCtx = compressedCanvas.getContext("2d");
+
+            if (!compressedCtx) {
+              throw new Error(
+                "Impossible de créer le contexte canvas compressé"
+              );
+            }
+
+            compressedCtx.drawImage(canvas, 0, 0);
+
+            let fileContent: Blob | string;
             let fileName: string;
 
             if (exportFormat === "svg") {
@@ -364,16 +404,10 @@ const GenerateMapButton = ({
               styleName: styleName,
             });
           } catch (error) {
-            console.error("Erreur lors de la génération de la carte:", error);
             reject(error);
           }
         });
       } catch (error) {
-        console.error(
-          `Erreur lors de l'initialisation de la carte ${styleName}:`,
-          error
-        );
-        document.body.removeChild(mapContainer);
         reject(error);
       }
     });
