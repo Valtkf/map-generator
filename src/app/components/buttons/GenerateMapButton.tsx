@@ -121,9 +121,9 @@ const GenerateMapButton = ({
         const previewHeight = 778;
         const exportWidth = 3508;
         const exportHeight = 4961;
-        // Hauteur du profil altimétrique : 40px (comme la preview) * ratio d'export
+        // Hauteur du profil altimétrique : 160px (comme la preview) * ratio d'export
         const profileExportHeight = Math.round(
-          40 * (exportWidth / previewWidth)
+          160 * (exportHeight / previewHeight)
         );
 
         // Calculer le rapport de taille
@@ -262,8 +262,8 @@ const GenerateMapButton = ({
             );
 
             // --- MODIF: Profil altimétrique exporté ---
-            // Largeur et hauteur du profil (70% de la largeur, 40px de haut)
-            const profileExportWidth = Math.round(exportWidth * 0.7);
+            // Largeur et hauteur du profil (90% de la largeur, 160px de haut)
+            const profileExportWidth = Math.round(exportWidth * 0.9);
             const profileExportX = Math.round(
               (exportWidth - profileExportWidth) / 2
             );

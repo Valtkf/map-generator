@@ -24,6 +24,7 @@ interface PreviewMapProps {
     elevation: number[];
     distance: number[];
   } | null;
+  onViewChange?: (center: [number, number], zoom: number) => void;
 }
 // Type pour le style personnalisé
 
@@ -39,6 +40,7 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
     isExport = false,
     lineWidth,
     elevationData,
+    onViewChange,
   } = props;
 
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -65,6 +67,23 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
     map.on("load", () => {
       isMapReady.current = true;
       if (onMapLoad) onMapLoad();
+    });
+
+    // Ajouter les écouteurs d'événements pour le mouvement et le zoom
+    map.on("moveend", () => {
+      if (onViewChange) {
+        const newCenter = map.getCenter().toArray() as [number, number];
+        const newZoom = map.getZoom();
+
+        // Ne mettre à jour que si les valeurs ont réellement changé
+        if (
+          newCenter[0] !== center[0] ||
+          newCenter[1] !== center[1] ||
+          newZoom !== zoom
+        ) {
+          onViewChange(newCenter, newZoom);
+        }
+      }
     });
 
     mapInstance.current = map;
@@ -102,8 +121,21 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
   useEffect(() => {
     if (!mapInstance.current) return;
 
-    mapInstance.current.setCenter(center);
-    mapInstance.current.setZoom(zoom);
+    const currentCenter = mapInstance.current.getCenter().toArray() as [
+      number,
+      number
+    ];
+    const currentZoom = mapInstance.current.getZoom();
+
+    // Ne mettre à jour que si les valeurs ont réellement changé
+    if (
+      currentCenter[0] !== center[0] ||
+      currentCenter[1] !== center[1] ||
+      currentZoom !== zoom
+    ) {
+      mapInstance.current.setCenter(center);
+      mapInstance.current.setZoom(zoom);
+    }
   }, [center, zoom]);
 
   return (
@@ -127,7 +159,7 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
         />
       )}
       {elevationData && (
-        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 h-[40px] w-[70%] pointer-events-none flex justify-center items-end">
+        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 h-[160px] w-[90%] pointer-events-none flex justify-center items-end">
           <ElevationProfile
             gpxData={elevationData}
             isMinimal={true}
