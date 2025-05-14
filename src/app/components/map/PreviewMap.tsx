@@ -7,7 +7,7 @@ import { GeoJson } from "../../utils/gpx";
 import { useMapStyle } from "../../hooks/map/useMapStyle";
 import { MapGrid } from "./grid/MapGrid";
 import { RouteLayer } from "./layers/RouteLayer";
-import { ElevationProfile } from "./ElevationProfile";
+import { ElevationProfile, exportElevationProfile } from "./ElevationProfile";
 import { MAP_STYLES } from "../inputs/ColorSelector";
 
 interface PreviewMapProps {
@@ -47,6 +47,16 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
   const mapInstance = useRef<mapboxgl.Map | null>(null);
   const mapStyle = useMapStyle(selectedStyle, backgroundColor);
   const isMapReady = useRef<boolean>(false);
+  const profileId = "preview-elevation-profile";
+
+  const handleDownloadElevationProfile = () => {
+    if (elevationData) {
+      exportElevationProfile(
+        profileId,
+        `profil-altimetrique-${new Date().toISOString().split("T")[0]}.png`
+      );
+    }
+  };
 
   useEffect(() => {
     if (!mapContainer.current || mapInstance.current) return;
@@ -166,7 +176,30 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
             traceColor={
               MAP_STYLES.find((s) => s.id === selectedStyle)?.traceColor
             }
+            id={profileId}
           />
+          {!isExport && (
+            <button
+              onClick={handleDownloadElevationProfile}
+              className="absolute bottom-0 right-0 bg-white bg-opacity-80 p-2 rounded-lg shadow-md text-sm pointer-events-auto"
+              title="Télécharger le profil altimétrique"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+            </button>
+          )}
         </div>
       )}
     </div>
