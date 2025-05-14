@@ -5,6 +5,7 @@ import { MAP_STYLES } from "../inputs/ColorSelector";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { ExportFormat } from "../inputs/FormatSelector";
+import Chart from "chart.js/auto";
 
 interface GenerateMapButtonProps {
   center: [number, number];
@@ -66,6 +67,23 @@ const GenerateMapButton = ({
         zip.file(fileName, content);
       });
 
+      // Si des données d'élévation sont disponibles, générer les profils altimétriques pour chaque style
+      if (elevationData && elevationData.elevation.length > 0) {
+        // Créer un dossier pour les profils altimétriques
+        const profilesFolder = zip.folder("profils-altimetriques");
+
+        if (profilesFolder) {
+          for (const mapStyle of MAP_STYLES) {
+            const { content, fileName } = await generateElevationProfileImage(
+              mapStyle.id,
+              mapStyle.name,
+              mapStyle.traceColor || "#000000"
+            );
+            profilesFolder.file(fileName, content);
+          }
+        }
+      }
+
       // Générer le ZIP et le télécharger
       const zipContent = await zip.generateAsync({ type: "blob" });
       saveAs(
@@ -81,6 +99,116 @@ const GenerateMapButton = ({
       // Supprimer l'indicateur de chargement
       document.body.removeChild(loadingElement);
     }
+  };
+
+  // Fonction pour générer une image du profil altimétrique pour un style donné
+  const generateElevationProfileImage = async (
+    styleId: string,
+    styleName: string,
+    traceColor: string
+  ): Promise<{ content: Blob; fileName: string }> => {
+    return new Promise<{ content: Blob; fileName: string }>(
+      (resolve, reject) => {
+        try {
+          // Créer un conteneur temporaire
+          const container = document.createElement("div");
+          container.style.width = "1000px";
+          container.style.height = "300px";
+          container.style.position = "absolute";
+          container.style.left = "-9999px";
+          document.body.appendChild(container);
+
+          // Créer un canvas
+          const canvas = document.createElement("canvas");
+          canvas.width = 1000;
+          canvas.height = 300;
+          container.appendChild(canvas);
+
+          // Obtenir le contexte du canvas
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            throw new Error("Impossible d'obtenir le contexte 2D du canvas");
+          }
+
+          // Créer un graphique Chart.js
+          const chart = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels:
+                elevationData?.distance.map((d) => (d / 1000).toFixed(1)) || [],
+              datasets: [
+                {
+                  data: elevationData?.elevation || [],
+                  borderColor: traceColor,
+                  backgroundColor: traceColor
+                    .replace("rgb", "rgba")
+                    .replace(")", ", 0.5)"),
+                  tension: 0.4,
+                  pointRadius: 0,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: false,
+                },
+                tooltip: {
+                  enabled: false,
+                },
+              },
+              scales: {
+                y: {
+                  display: false,
+                  grid: {
+                    display: false,
+                  },
+                },
+                x: {
+                  display: false,
+                  grid: {
+                    display: false,
+                  },
+                },
+              },
+            },
+          });
+
+          // Attendre que le graphique soit rendu
+          setTimeout(() => {
+            try {
+              // Convertir le canvas en blob
+              canvas.toBlob((blob) => {
+                if (!blob) {
+                  reject(
+                    new Error("Impossible de convertir le canvas en blob")
+                  );
+                  return;
+                }
+
+                // Nettoyer
+                chart.destroy();
+                document.body.removeChild(container);
+
+                // Résoudre avec le contenu
+                resolve({
+                  content: blob,
+                  fileName: `profil-altimetrique-${styleName}-${
+                    new Date().toISOString().split("T")[0]
+                  }.png`,
+                });
+              }, "image/png");
+            } catch (error) {
+              reject(error);
+            }
+          }, 500);
+        } catch (error) {
+          reject(error);
+        }
+      }
+    );
   };
 
   const createCustomStyle = (backgroundColor: string): MapboxStyle => {
@@ -121,10 +249,10 @@ const GenerateMapButton = ({
         const previewHeight = 778;
         const exportWidth = 3508;
         const exportHeight = 4961;
-        // Hauteur du profil altimétrique : 40px (comme la preview) * ratio d'export
-        const profileExportHeight = Math.round(
-          40 * (exportWidth / previewWidth)
-        );
+        // Hauteur du profil altimétrique : 160px (comme la preview) * ratio d'export
+        // const profileExportHeight = Math.round(
+        //   160 * (exportHeight / previewHeight)
+        // );
 
         // Calculer le rapport de taille
         const widthRatio = exportWidth / previewWidth;
@@ -261,88 +389,6 @@ const GenerateMapButton = ({
               exportHeight // On dessine la carte sur toute la hauteur
             );
 
-            // --- MODIF: Profil altimétrique exporté ---
-            // Largeur et hauteur du profil (70% de la largeur, 40px de haut)
-            const profileExportWidth = Math.round(exportWidth * 0.7);
-            const profileExportX = Math.round(
-              (exportWidth - profileExportWidth) / 2
-            );
-            const profileExportY = exportHeight - profileExportHeight;
-            // ... existing code ...
-            // Si nous avons des données d'élévation, dessiner le profil
-            if (elevationData) {
-              // Créer un canvas temporaire pour le profil
-              const profileCanvas = document.createElement("canvas");
-              profileCanvas.width = profileExportWidth;
-              profileCanvas.height = profileExportHeight;
-              const profileCtx = profileCanvas.getContext("2d");
-
-              if (!profileCtx) {
-                throw new Error(
-                  "Impossible de créer le contexte canvas pour le profil"
-                );
-              }
-
-              // Vérifier que nous avons des données d'élévation valides
-              const validElevations = elevationData.elevation.filter(
-                (e) => typeof e === "number" && !isNaN(e)
-              );
-
-              if (validElevations.length >= 2) {
-                // Dessiner la ligne du profil
-                const traceColor =
-                  MAP_STYLES.find((s) => s.id === styleId)?.traceColor ||
-                  "#000000";
-                profileCtx.strokeStyle = traceColor;
-                profileCtx.lineWidth = 12;
-                profileCtx.beginPath();
-
-                const maxElevation = Math.max(...validElevations);
-                const minElevation = Math.min(...validElevations);
-                const elevationRange = maxElevation - minElevation;
-                const padding = 20 * (profileExportWidth / exportWidth); // Adapter le padding à la largeur du profil
-
-                if (elevationRange === 0) {
-                  // Toutes les altitudes sont identiques : dessiner une ligne plate au centre
-                  profileCtx.beginPath();
-                  profileCtx.moveTo(padding, profileExportHeight / 2);
-                  profileCtx.lineTo(
-                    profileExportWidth - padding,
-                    profileExportHeight / 2
-                  );
-                  profileCtx.stroke();
-                } else {
-                  elevationData.elevation.forEach((elevation, index) => {
-                    const x =
-                      (index / (elevationData.elevation.length - 1)) *
-                        (profileExportWidth - 2 * padding) +
-                      padding;
-                    const y =
-                      profileExportHeight -
-                      padding -
-                      ((elevation - minElevation) / elevationRange) *
-                        (profileExportHeight - 2 * padding);
-
-                    if (index === 0) {
-                      profileCtx.moveTo(x, y);
-                    } else {
-                      profileCtx.lineTo(x, y);
-                    }
-                  });
-                  profileCtx.stroke();
-                }
-              }
-
-              // Dessiner le profil sur le canvas principal (centré en bas)
-              ctx.drawImage(
-                profileCanvas,
-                profileExportX,
-                profileExportY,
-                profileExportWidth,
-                profileExportHeight
-              );
-            }
-
             // Compresser le canvas
             const compressedCanvas = document.createElement("canvas");
             compressedCanvas.width = 3508;
@@ -444,7 +490,7 @@ const GenerateMapButton = ({
           Génération en cours...
         </span>
       ) : (
-        "Générer les 4 styles de carte"
+        "Générer les 4 styles de carte avec profils altimétriques"
       )}
     </button>
   );

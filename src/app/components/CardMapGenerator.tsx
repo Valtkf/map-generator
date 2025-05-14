@@ -162,6 +162,17 @@ const CardMap = () => {
     }));
   }, []);
 
+  const handleViewChange = useCallback(
+    (newCenter: [number, number], newZoom: number) => {
+      setMapState((prev) => ({
+        ...prev,
+        center: newCenter,
+        zoom: newZoom,
+      }));
+    },
+    []
+  );
+
   // Extraction des valeurs
   const { center, zoom, backgroundColor, geoJson, elevationData } = mapState;
 
@@ -200,6 +211,7 @@ const CardMap = () => {
               selectedStyle={selectedStyle}
               lineWidth={lineWidth}
               elevationData={elevationData}
+              onViewChange={handleViewChange}
             />
 
             {/* Contrôles de carte superposés */}

@@ -17,12 +17,14 @@ interface ElevationProfileProps {
   };
   isMinimal?: boolean;
   traceColor?: string;
+  id?: string;
 }
 
 export const ElevationProfile: React.FC<ElevationProfileProps> = ({
   gpxData,
   isMinimal = false,
   traceColor,
+  id = "elevation-profile",
 }) => {
   const options = {
     responsive: true,
@@ -71,6 +73,7 @@ export const ElevationProfile: React.FC<ElevationProfileProps> = ({
 
   return (
     <div
+      id={id}
       className={`w-full h-full ${
         isMinimal ? "" : "h-32 mt-4 p-4 rounded-lg shadow"
       }`}
@@ -88,4 +91,22 @@ export const ElevationProfile: React.FC<ElevationProfileProps> = ({
       <Line options={options} data={data} />
     </div>
   );
+};
+
+// Fonction pour exporter le profil altimétrique sous forme d'image
+export const exportElevationProfile = (
+  elementId: string = "elevation-profile",
+  fileName: string = "profil-altimetrique.png"
+) => {
+  const chartContainer = document.getElementById(elementId);
+  if (!chartContainer) return;
+
+  const canvas = chartContainer.querySelector("canvas");
+  if (!canvas) return;
+
+  // Créer un lien de téléchargement et déclencher le téléchargement
+  const link = document.createElement("a");
+  link.href = canvas.toDataURL("image/png");
+  link.download = fileName;
+  link.click();
 };
