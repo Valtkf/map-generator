@@ -49,6 +49,9 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
   const isMapReady = useRef<boolean>(false);
   const profileId = "preview-elevation-profile";
 
+  const style = MAP_STYLES.find((s) => s.id === selectedStyle);
+  const traceColor = style?.traceColor || "#000";
+
   const handleDownloadElevationProfile = () => {
     if (elevationData) {
       exportElevationProfile(
@@ -171,12 +174,9 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
       {elevationData && (
         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 h-[160px] w-[90%] pointer-events-none flex justify-center items-end">
           <ElevationProfile
-            gpxData={elevationData}
-            isMinimal={true}
-            traceColor={
-              MAP_STYLES.find((s) => s.id === selectedStyle)?.traceColor
-            }
+            elevationData={elevationData}
             id={profileId}
+            color={traceColor}
           />
           {!isExport && (
             <button

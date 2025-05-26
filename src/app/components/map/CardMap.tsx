@@ -1,24 +1,22 @@
 import React, { useRef, useState } from "react";
 import { ExportFormat } from "../inputs/FormatSelector";
-import { generateMapExport } from "../../services/mapExport";
 import { MAP_STYLES } from "../inputs/ColorSelector";
 import PreviewMap from "./PreviewMap";
-import { GeoJson } from "../../utils/gpx";
+// import { GeoJson } from "../../utils/gpx";
 
 import "mapbox-gl/dist/mapbox-gl.css";
 
 interface CardMapProps {
-  gpxGeoJson: GeoJson | null;
+  // gpxGeoJson: GeoJson | null;
   center: [number, number];
   zoom: number;
-  lineWidth: number;
+  // lineWidth: number;
 }
 
 export const CardMap = ({
-  gpxGeoJson,
+  // gpxGeoJson,
   center,
   zoom,
-  lineWidth,
 }: CardMapProps) => {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>("png");
@@ -27,50 +25,36 @@ export const CardMap = ({
   const handleExport = async () => {
     if (!mapRef.current) return;
 
-    // Créer une promesse qui se résout quand la carte est chargée
-    const waitForMap = new Promise<void>((resolve) => {
+    // Attendre que la carte soit complètement chargée (événement 'idle')
+    await new Promise<void>((resolve) => {
       const map = mapRef.current;
-      if (!map) return;
-
-      if (map.loaded() && map.isStyleLoaded()) {
-        resolve();
-      } else {
-        map.once("styledata", () => {
-          if (map.isStyleLoaded()) resolve();
-        });
-      }
+      if (map && map.loaded() && map.isStyleLoaded()) resolve();
+      else if (map) map.once("idle", () => resolve());
     });
 
-    await waitForMap;
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Augmenter le délai
+    // Délai de sécurité pour Safari (rendu final)
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     try {
       const map = mapRef.current;
       if (!map) return;
 
       const canvas = map.getCanvas();
-      const result = await generateMapExport(
-        canvas,
-        selectedFormat,
-        selectedStyle
-      );
 
-      // Créer un lien de téléchargement
+      // Utiliser toDataURL (plus fiable sur Safari)
+      const dataUrl = canvas.toDataURL("image/png");
+
+      // Création et déclenchement du téléchargement
       const link = document.createElement("a");
-      const url =
-        result.content instanceof Blob
-          ? URL.createObjectURL(result.content)
-          : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-              result.content
-            )}`;
-
-      link.href = url;
-      link.download = result.fileName;
+      link.href = dataUrl;
+      link.download = "carte.png";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      if (result.content instanceof Blob) URL.revokeObjectURL(url);
     } catch (error) {
+      alert(
+        "Export impossible sur ce navigateur. Essayez sur Chrome ou Firefox."
+      );
       console.error("Erreur lors de l'export:", error);
     }
   };
@@ -79,13 +63,12 @@ export const CardMap = ({
     <div>
       <PreviewMap
         ref={mapRef}
-        backgroundColor="#FFFFFF"
-        gpxGeoJson={gpxGeoJson}
+        backgroundColor="#ffffff"
+        gpxGeoJson={null}
         center={center}
         zoom={zoom}
         selectedStyle={selectedStyle}
-        isExport={true}
-        lineWidth={lineWidth}
+        lineWidth={2}
       />
       <select
         value={selectedFormat}
