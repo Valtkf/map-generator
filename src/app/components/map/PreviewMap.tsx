@@ -8,7 +8,6 @@ import { useMapStyle } from "../../hooks/map/useMapStyle";
 import { MapGrid } from "./grid/MapGrid";
 import { RouteLayer } from "./layers/RouteLayer";
 import { ElevationProfile, exportElevationProfile } from "./ElevationProfile";
-import { MAP_STYLES } from "../inputs/ColorSelector";
 
 interface PreviewMapProps {
   backgroundColor: string;
@@ -170,14 +169,7 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
       )}
       {elevationData && (
         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 h-[160px] w-[90%] pointer-events-none flex justify-center items-end">
-          <ElevationProfile
-            gpxData={elevationData}
-            isMinimal={true}
-            traceColor={
-              MAP_STYLES.find((s) => s.id === selectedStyle)?.traceColor
-            }
-            id={profileId}
-          />
+          <ElevationProfile elevationData={elevationData} id={profileId} />
           {!isExport && (
             <button
               onClick={handleDownloadElevationProfile}

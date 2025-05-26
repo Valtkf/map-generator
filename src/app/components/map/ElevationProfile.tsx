@@ -1,112 +1,117 @@
-import React from "react";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-} from "chart.js";
-import { Line } from "react-chartjs-2";
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement);
+import React, { useEffect, useRef } from "react";
+import Chart from "chart.js/auto";
 
 interface ElevationProfileProps {
-  gpxData: {
+  id: string;
+  elevationData: {
     elevation: number[];
     distance: number[];
   };
-  isMinimal?: boolean;
-  traceColor?: string;
-  id?: string;
+  onDownload?: () => void;
 }
 
 export const ElevationProfile: React.FC<ElevationProfileProps> = ({
-  gpxData,
-  isMinimal = false,
-  traceColor,
-  id = "elevation-profile",
+  id,
+  elevationData,
+  onDownload,
 }) => {
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false,
+  const chartRef = useRef<HTMLCanvasElement>(null);
+  const chartInstance = useRef<Chart | null>(null);
+
+  useEffect(() => {
+    if (!chartRef.current || !elevationData) return;
+
+    // Détruire le graphique existant s'il y en a un
+    if (chartInstance.current) {
+      chartInstance.current.destroy();
+    }
+
+    const ctx = chartRef.current.getContext("2d");
+    if (!ctx) return;
+
+    // Créer le nouveau graphique
+    chartInstance.current = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: elevationData.distance.map((d) => `${d.toFixed(1)} km`),
+        datasets: [
+          {
+            data: elevationData.elevation,
+            borderColor: "#000000",
+            borderWidth: 2,
+            fill: false,
+            tension: 0.4,
+            pointRadius: 0,
+          },
+        ],
       },
-      tooltip: {
-        enabled: !isMinimal,
-      },
-    },
-    scales: {
-      y: {
-        display: !isMinimal,
-        grid: {
-          display: !isMinimal,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false,
+          },
+          tooltip: {
+            enabled: false,
+          },
+        },
+        scales: {
+          x: {
+            display: false,
+          },
+          y: {
+            display: false,
+          },
+        },
+        animation: {
+          duration: 0,
         },
       },
-      x: {
-        display: !isMinimal,
-        grid: {
-          display: !isMinimal,
-        },
-      },
-    },
-  };
+    });
 
-  const color = traceColor || "rgb(75, 192, 192)";
-  const bgColor = traceColor
-    ? color.replace("rgb", "rgba").replace(")", ", 0.5)")
-    : "rgba(75, 192, 192, 0.5)";
-
-  const data = {
-    labels: gpxData.distance.map((d) => (d / 1000).toFixed(1)),
-    datasets: [
-      {
-        data: gpxData.elevation,
-        borderColor: color,
-        backgroundColor: bgColor,
-        tension: 0.4,
-        pointRadius: isMinimal ? 0 : 3,
-      },
-    ],
-  };
+    return () => {
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
+      }
+    };
+  }, [elevationData]);
 
   return (
-    <div
-      id={id}
-      className={`w-full h-full ${
-        isMinimal ? "" : "h-32 mt-4 p-4 rounded-lg shadow"
-      }`}
-      style={
-        isMinimal
-          ? {
-              background: "transparent",
-              boxShadow: "none",
-              padding: 0,
-              borderRadius: 0,
-            }
-          : {}
-      }
-    >
-      <Line options={options} data={data} />
+    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 h-[160px] w-[90%] pointer-events-none flex justify-center items-end">
+      <canvas ref={chartRef} id={id} />
+      {onDownload && (
+        <button
+          onClick={onDownload}
+          className="absolute bottom-0 right-0 bg-white bg-opacity-80 p-2 rounded-lg shadow-md text-sm pointer-events-auto"
+          title="Télécharger le profil altimétrique"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+            />
+          </svg>
+        </button>
+      )}
     </div>
   );
 };
 
-// Fonction pour exporter le profil altimétrique sous forme d'image
-export const exportElevationProfile = (
-  elementId: string = "elevation-profile",
-  fileName: string = "profil-altimetrique.png"
-) => {
-  const chartContainer = document.getElementById(elementId);
-  if (!chartContainer) return;
-
-  const canvas = chartContainer.querySelector("canvas");
+export const exportElevationProfile = (id: string, filename: string) => {
+  const canvas = document.getElementById(id) as HTMLCanvasElement;
   if (!canvas) return;
 
-  // Créer un lien de téléchargement et déclencher le téléchargement
   const link = document.createElement("a");
+  link.download = filename;
   link.href = canvas.toDataURL("image/png");
-  link.download = fileName;
   link.click();
 };
