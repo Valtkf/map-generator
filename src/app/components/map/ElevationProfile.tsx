@@ -7,12 +7,14 @@ interface ElevationProfileProps {
     elevation: number[];
     distance: number[];
   };
+  color?: string;
   onDownload?: () => void;
 }
 
 export const ElevationProfile: React.FC<ElevationProfileProps> = ({
   id,
   elevationData,
+  color = "#000",
   onDownload,
 }) => {
   const chartRef = useRef<HTMLCanvasElement>(null);
@@ -21,7 +23,6 @@ export const ElevationProfile: React.FC<ElevationProfileProps> = ({
   useEffect(() => {
     if (!chartRef.current || !elevationData) return;
 
-    // Détruire le graphique existant s'il y en a un
     if (chartInstance.current) {
       chartInstance.current.destroy();
     }
@@ -29,7 +30,6 @@ export const ElevationProfile: React.FC<ElevationProfileProps> = ({
     const ctx = chartRef.current.getContext("2d");
     if (!ctx) return;
 
-    // Créer le nouveau graphique
     chartInstance.current = new Chart(ctx, {
       type: "line",
       data: {
@@ -37,11 +37,15 @@ export const ElevationProfile: React.FC<ElevationProfileProps> = ({
         datasets: [
           {
             data: elevationData.elevation,
-            borderColor: "#000000",
-            borderWidth: 2,
+            borderColor: color,
+            borderWidth: 1.5,
             fill: false,
-            tension: 0.4,
+            tension: 0,
             pointRadius: 0,
+            pointHoverRadius: 0,
+            pointBorderWidth: 0,
+            pointBackgroundColor: "rgba(0,0,0,0)",
+            pointBorderColor: "rgba(0,0,0,0)",
           },
         ],
       },
@@ -49,24 +53,18 @@ export const ElevationProfile: React.FC<ElevationProfileProps> = ({
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: {
-            display: false,
-          },
-          tooltip: {
-            enabled: false,
-          },
+          legend: { display: false },
+          tooltip: { enabled: false },
+        },
+        elements: {
+          line: { borderJoinStyle: "round" },
         },
         scales: {
-          x: {
-            display: false,
-          },
-          y: {
-            display: false,
-          },
+          x: { display: false, grid: { display: false } },
+          y: { display: false, grid: { display: false } },
         },
-        animation: {
-          duration: 0,
-        },
+        animation: false,
+        backgroundColor: "rgba(0,0,0,0)",
       },
     });
 
@@ -75,7 +73,7 @@ export const ElevationProfile: React.FC<ElevationProfileProps> = ({
         chartInstance.current.destroy();
       }
     };
-  }, [elevationData]);
+  }, [elevationData, color]);
 
   return (
     <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 h-[160px] w-[90%] pointer-events-none flex justify-center items-end">

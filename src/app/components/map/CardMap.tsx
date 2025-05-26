@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { ExportFormat } from "../inputs/FormatSelector";
 import { MAP_STYLES } from "../inputs/ColorSelector";
-import StaticMapPreview from "./PreviewMap";
+import PreviewMap from "./PreviewMap";
 // import { GeoJson } from "../../utils/gpx";
 
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -59,21 +59,16 @@ export const CardMap = ({
     }
   };
 
-  // À adapter selon où tu stockes le styleId et le token
-  const styleId = "tonuser/abc123xyz"; // Remplace par ton vrai styleId
-  const accessToken = "TON_TOKEN_MAPBOX"; // Remplace par ton vrai token
-  const width = 550; // ou 3508 pour export HD
-  const height = 778; // ou 4961 pour export HD
-
   return (
     <div>
-      <StaticMapPreview
-        styleId={styleId}
-        accessToken={accessToken}
+      <PreviewMap
+        ref={mapRef}
+        backgroundColor="#ffffff"
+        gpxGeoJson={null}
         center={center}
         zoom={zoom}
-        width={width}
-        height={height}
+        selectedStyle={selectedStyle}
+        lineWidth={2}
       />
       <select
         value={selectedFormat}
