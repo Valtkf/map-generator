@@ -172,7 +172,7 @@ const PreviewMap = forwardRef<mapboxgl.Map, PreviewMapProps>((props, ref) => {
         />
       )}
       {elevationData && (
-        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 h-[160px] w-[90%] pointer-events-none flex justify-center items-end">
+        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 h-[77px] w-[90%] pointer-events-none flex justify-center items-end">
           <ElevationProfile
             elevationData={elevationData}
             id={profileId}
