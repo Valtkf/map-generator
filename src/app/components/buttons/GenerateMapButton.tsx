@@ -112,16 +112,16 @@ const GenerateMapButton = ({
         try {
           // Créer un conteneur temporaire
           const container = document.createElement("div");
-          container.style.width = "1000px";
-          container.style.height = "300px";
+          container.style.width = "2500px";
+          container.style.height = "350px";
           container.style.position = "absolute";
           container.style.left = "-9999px";
           document.body.appendChild(container);
 
           // Créer un canvas
           const canvas = document.createElement("canvas");
-          canvas.width = 1000;
-          canvas.height = 300;
+          canvas.width = 2500;
+          canvas.height = 350;
           container.appendChild(canvas);
 
           // Obtenir le contexte du canvas
